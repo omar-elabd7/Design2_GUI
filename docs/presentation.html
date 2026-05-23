@@ -1,0 +1,380 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pluto Presentation</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap');
+:root{--g:#1B8A5A;--gl:#2ECC8E;--a:#F4A825;--r:#E53935;--b:#1E88E5;--bg:#0D1117;--mid:#161B22;--sf:#1E2530;--card:#252D3A;--bdr:#2E3A4E;--t1:#EAECEF;--t2:#8B949E;--t3:#484F58}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100vw;height:100vh;overflow:hidden;background:var(--bg);font-family:'Inter',sans-serif;color:var(--t1)}
+.grid{position:absolute;inset:0;background-image:linear-gradient(rgba(46,204,142,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(46,204,142,.035) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;z-index:0}
+.glow{position:absolute;border-radius:50%;filter:blur(90px);pointer-events:none;z-index:0}
+.deck{position:relative;width:100vw;height:100vh;overflow:hidden}
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:48px 68px;opacity:0;pointer-events:none;transition:opacity .45s ease,transform .45s ease;transform:translateX(50px);overflow:hidden}
+.slide.active{opacity:1;transform:translateX(0);pointer-events:all}
+.slide.prev{opacity:0;transform:translateX(-50px);pointer-events:none}
+.inner{position:relative;z-index:1;width:100%;max-width:1080px}
+.ey{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(--gl);margin-bottom:10px}
+h1{font-size:60px;font-weight:900;line-height:1.0;background:linear-gradient(130deg,#fff 0%,var(--gl) 55%,var(--a) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:16px}
+h2{font-size:36px;font-weight:800;line-height:1.1;background:linear-gradient(130deg,#fff 0%,var(--gl) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:16px}
+.lead{font-size:16px;color:var(--t2);line-height:1.65;max-width:680px;margin-bottom:28px}
+.bar{width:52px;height:3px;background:linear-gradient(90deg,var(--g),var(--gl));border-radius:2px;margin-bottom:24px}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:30px}
+.chip{display:inline-flex;align-items:center;gap:7px;background:var(--sf);border:1px solid var(--bdr);border-radius:8px;padding:8px 15px;font-size:13px;font-weight:500;color:var(--t1)}
+.tag{display:inline-block;padding:4px 11px;border-radius:20px;font-size:11px;font-weight:600;margin:3px}
+.tg{background:rgba(67,160,71,.18);color:#81C784;border:1px solid rgba(67,160,71,.3)}
+.ty{background:rgba(244,168,37,.18);color:#FFD54F;border:1px solid rgba(244,168,37,.3)}
+.tb{background:rgba(30,136,229,.18);color:#90CAF9;border:1px solid rgba(30,136,229,.3)}
+.card{background:var(--card);border:1px solid var(--bdr);border-radius:14px;padding:20px;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--g),var(--gl))}
+.ci{font-size:28px;margin-bottom:10px;display:block}
+.ct{font-size:13px;font-weight:700;color:var(--t1);margin-bottom:5px}
+.cb{font-size:12px;color:var(--t2);line-height:1.55}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:13px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:start}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:rgba(27,138,90,.15);color:var(--gl);font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:9px 13px;text-align:left;border-bottom:1px solid var(--bdr)}
+td{padding:9px 13px;border-bottom:1px solid rgba(46,58,78,.5);color:var(--t2)}
+td:first-child{color:var(--t1);font-weight:600;font-family:'JetBrains Mono',monospace;font-size:12px}
+tr:last-child td{border-bottom:none}
+.prow{display:flex;align-items:center;gap:12px;background:var(--sf);border:1px solid var(--bdr);border-radius:8px;padding:9px 13px;margin-bottom:7px}
+.pn{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--gl);font-weight:600;min-width:200px}
+.pd{font-size:11.5px;color:var(--t2)}
+.code{background:var(--mid);border:1px solid var(--bdr);border-left:3px solid var(--g);border-radius:8px;padding:14px 18px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#A8D8B9;line-height:1.75;white-space:pre}
+.cm{color:var(--t3)}.cr{color:var(--a)}.ca{color:var(--gl)}
+.flow{display:flex;align-items:center;gap:9px;background:var(--sf);border:1px solid var(--bdr);border-radius:9px;padding:12px 18px;flex-wrap:wrap}
+.fs{font-size:12.5px;color:var(--t2)}.fh{color:var(--t1);font-weight:600}.arr{color:var(--gl);font-size:15px}
+.flist{list-style:none;display:flex;flex-direction:column;gap:8px}
+.flist li{display:flex;gap:9px;font-size:13px;color:var(--t2);line-height:1.5;align-items:flex-start}
+.flist li::before{content:'▸';color:var(--gl);flex-shrink:0;margin-top:1px}
+.sl{font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--gl);margin-bottom:10px;margin-top:16px}
+.sl:first-child{margin-top:0}
+.ssgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
+.ssi{border-radius:12px;overflow:hidden;border:1px solid var(--bdr);background:var(--card);display:flex;flex-direction:column}
+.ssl{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gl);padding:9px 13px;background:var(--mid);border-bottom:1px solid var(--bdr)}
+.ssm{flex:1;min-height:150px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:9px;color:var(--t3);font-size:12px;position:relative;overflow:hidden}
+.ssc{padding:9px 13px;font-size:11px;color:var(--t2)}
+.nav{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:13px;background:rgba(22,27,34,.9);border:1px solid var(--bdr);border-radius:50px;padding:8px 17px;backdrop-filter:blur(12px);z-index:999}
+.nav button{background:none;border:none;color:var(--t2);font-size:18px;cursor:pointer;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.nav button:hover{background:rgba(27,138,90,.25);color:var(--gl)}
+.ndots{display:flex;gap:6px;align-items:center}
+.nd{width:7px;height:7px;border-radius:50%;background:var(--t3);cursor:pointer;transition:all .3s}
+.nd.on{background:var(--gl);width:20px;border-radius:4px}
+.nctr{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--t3);min-width:36px;text-align:center}
+#tb{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--g),var(--gl),var(--a));transition:width .4s ease;z-index:999}
+</style>
+</head>
+<body>
+<div id="tb"></div>
+<div class="deck">
+
+<!-- SLIDE 1 TITLE -->
+<div class="slide active" id="s1">
+<div class="grid"></div>
+<div class="glow" style="width:480px;height:480px;background:rgba(27,138,90,.12);top:-150px;left:-90px"></div>
+<div class="glow" style="width:360px;height:360px;background:rgba(244,168,37,.08);bottom:-110px;right:-70px"></div>
+<div class="inner">
+<div class="ey">Pluto &mdash; Front-End Presentation &middot; 2026</div>
+<h1>Autonomous<br>Shopping Robot GUI</h1>
+<p class="lead">A Flutter desktop interface powering an AI-driven grocery delivery robot &mdash; serving shoppers &amp; workers from a single codebase.</p>
+<div class="chips">
+<span class="chip">🐦 Flutter + Dart</span>
+<span class="chip">⚡ Riverpod</span>
+<span class="chip">🧭 GoRouter</span>
+<span class="chip">🔌 WebSocket</span>
+<span class="chip">🌓 Dark &amp; Light Theme</span>
+<span class="chip">�� 2 User Roles</span>
+</div>
+<div class="g4">
+<div class="card"><span class="ci">🛒</span><div class="ct">Customer</div><div class="cb">Shop, cart, checkout &amp; live tracking</div></div>
+<div class="card"><span class="ci">🔧</span><div class="ct">Worker</div><div class="cb">Teleoperate &amp; monitor the robot</div></div>
+<div class="card"><span class="ci">🤖</span><div class="ct">Live Robot</div><div class="cb">WebSocket telemetry &amp; mission stream</div></div>
+<div class="card"><span class="ci">🏗️</span><div class="ct">Clean Arch</div><div class="cb">Feature-first, DI-wired, testable layers</div></div>
+</div>
+</div>
+</div>
+
+<!-- SLIDE 2 FRAMEWORK -->
+<div class="slide" id="s2">
+<div class="grid"></div>
+<div class="glow" style="width:400px;height:400px;background:rgba(27,138,90,.1);top:-100px;right:-70px"></div>
+<div class="inner">
+<div class="ey">Slide 02 &middot; Framework &amp; Architecture</div>
+<h2>How It&apos;s Built</h2>
+<div class="bar"></div>
+<div class="two">
+<div>
+<div class="sl">Tech Stack</div>
+<table>
+<thead><tr><th>Layer</th><th>Technology</th></tr></thead>
+<tbody>
+<tr><td>UI Framework</td><td>Flutter (Dart ^3.8.1)</td></tr>
+<tr><td>State Mgmt</td><td>Riverpod ^2.6 &mdash; reactive, DI-friendly</td></tr>
+<tr><td>Navigation</td><td>GoRouter ^14.6 &mdash; role-guarded routes</td></tr>
+<tr><td>Real-time</td><td>WebSocket (web_socket_channel)</td></tr>
+<tr><td>Persistence</td><td>SharedPreferences &mdash; theme, session</td></tr>
+<tr><td>IDs</td><td>UUID v4 for order &amp; mission tokens</td></tr>
+</tbody>
+</table>
+<div class="sl">Data Flow</div>
+<div class="flow">
+<span class="fs fh">UI</span><span class="arr">&#8592;</span>
+<span class="fs fh">Providers</span><span class="arr">&#8592;</span>
+<span class="fs fh">Repositories</span><span class="arr">&#8592;</span>
+<span class="fs fh">DataSources</span><span class="arr">&#8592;</span>
+<span class="fs" style="color:var(--b)">WS / REST</span>
+</div>
+</div>
+<div>
+<div class="sl">Folder Structure</div>
+<div class="card" style="font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.8;color:var(--t2)">
+<span style="color:var(--a);font-weight:700">lib/</span>
+&#9500;&#9472;&#9472; <span style="color:var(--gl)">core/</span>        routing &middot; theme &middot; widgets
+&#9500;&#9472;&#9472; <span style="color:var(--gl)">features/</span>
+&#9474;   &#9500;&#9472;&#9472; auth/        login + auth state
+&#9474;   &#9500;&#9472;&#9472; splash/      splash screens
+&#9474;   &#9500;&#9472;&#9472; shell/       role-based shells
+&#9474;   &#9500;&#9472;&#9472; customer/    home &middot; cart &middot; checkout &middot; tracking
+&#9474;   &#9500;&#9472;&#9472; worker/      robot control dashboard
+&#9474;   &#9492;&#9472;&#9472; robot_status/ telemetry widgets
+&#9500;&#9472;&#9472; <span style="color:var(--gl)">shared/</span>      models &middot; DTOs
+&#9492;&#9472;&#9472; <span style="color:var(--gl)">infrastructure/</span> data sources &middot; DI
+</div>
+<div class="sl">Key Decisions</div>
+<ul class="flist">
+<li>Feature-first &mdash; each feature owns domain, presentation &amp; providers</li>
+<li>Single AppColors token file drives all 80+ color references</li>
+<li>GoRouter redirect guards enforce role access automatically</li>
+<li>Dual dark/light theme persisted across sessions</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+
+<!-- SLIDE 3 ROUTES + STATE -->
+<div class="slide" id="s3">
+<div class="grid"></div>
+<div class="glow" style="width:380px;height:380px;background:rgba(27,138,90,.1);bottom:-110px;left:-70px"></div>
+<div class="inner">
+<div class="ey">Slide 03 &middot; Navigation &amp; State Management</div>
+<h2>Routes &amp; Providers</h2>
+<div class="bar"></div>
+<div class="two">
+<div>
+<div class="sl">Route Map &mdash; GoRouter</div>
+<div class="code"><span class="cm"># Always available</span>
+<span class="cr">/splash</span>                <span class="ca">&#8594;</span> SplashScreen
+<span class="cr">/login</span>                 <span class="ca">&#8594;</span> LoginScreen
+
+<span class="cm"># Customer shell (role-guarded)</span>
+<span class="cr">/customer/home</span>         <span class="ca">&#8594;</span> CustomerHomeScreen
+<span class="cr">/customer/cart</span>         <span class="ca">&#8594;</span> CartScreen
+<span class="cr">/customer/checkout</span>     <span class="ca">&#8594;</span> CheckoutScreen
+<span class="cr">/customer/tracking/:id</span> <span class="ca">&#8594;</span> OrderTrackingScreen
+
+<span class="cm"># Worker shell (role-guarded)</span>
+<span class="cr">/worker/dashboard</span>      <span class="ca">&#8594;</span> WorkerDashboardScreen
+
+<span class="cm"># Dev only</span>
+<span class="cr">/debug</span>                 <span class="ca">&#8594;</span> DebugPanelScreen</div>
+</div>
+<div>
+<div class="sl">Riverpod Providers</div>
+<div class="prow"><div class="pn">authStateProvider</div><div class="pd">Session, role, login/logout</div></div>
+<div class="prow"><div class="pn">themeModeProvider</div><div class="pd">Dark/Light &mdash; persisted</div></div>
+<div class="prow"><div class="pn">cartProvider</div><div class="pd">Cart items + quantities</div></div>
+<div class="prow"><div class="pn">cartTotalProvider</div><div class="pd">Computed running total</div></div>
+<div class="prow"><div class="pn">checkoutProvider</div><div class="pd">Order placement + order object</div></div>
+<div class="prow"><div class="pn">robotStatusProvider</div><div class="pd">Live telemetry via WebSocket</div></div>
+<div class="prow"><div class="pn">missionUpdatesProvider</div><div class="pd">WS stream &#8594; MissionUpdate list</div></div>
+<div class="prow"><div class="pn">filteredProductsProvider</div><div class="pd">Search + category filter</div></div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- SLIDE 4 GUI SHOWCASE -->
+<div class="slide" id="s4">
+<div class="grid"></div>
+<div class="glow" style="width:420px;height:420px;background:rgba(27,138,90,.09);top:-120px;right:-60px"></div>
+<div class="glow" style="width:320px;height:320px;background:rgba(244,168,37,.07);bottom:-90px;left:-50px"></div>
+<div class="inner">
+<div class="ey">Slide 04 &middot; GUI Showcase</div>
+<h2>Screen Overview</h2>
+<div class="bar"></div>
+<div class="ssgrid">
+<div class="ssi">
+<div class="ssl">🔐 Login Screen</div>
+<div class="ssm" style="background:#0D1117;min-height:155px">
+<div style="position:absolute;left:0;top:0;bottom:0;width:55%;background:linear-gradient(135deg,rgba(27,138,90,.18) 0%,transparent 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px">
+<div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#1B8A5A,#2ECC8E);display:flex;align-items:center;justify-content:center;font-size:18px">🌿</div>
+<div style="width:70px;height:7px;background:#484F58;border-radius:3px"></div>
+<div style="width:50px;height:5px;background:#484F58;border-radius:3px;opacity:.5"></div>
+</div>
+<div style="position:absolute;right:0;top:0;bottom:0;width:45%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:10px">
+<div style="width:100%;height:20px;background:#1E2530;border:1px solid #2E3A4E;border-radius:5px"></div>
+<div style="width:100%;height:20px;background:#1E2530;border:1px solid #2E3A4E;border-radius:5px"></div>
+<div style="display:flex;gap:4px;width:100%">
+<div style="flex:1;height:18px;background:rgba(27,138,90,.35);border-radius:4px;border:1px solid #1B8A5A"></div>
+<div style="flex:1;height:18px;background:#1E2530;border-radius:4px;border:1px solid #2E3A4E"></div>
+</div>
+<div style="width:100%;height:22px;background:linear-gradient(90deg,#1B8A5A,#2ECC8E);border-radius:5px"></div>
+</div>
+</div>
+<div class="ssc">Split panel &middot; Role selector &middot; Animated glows</div>
+</div>
+<div class="ssi">
+<div class="ssl">🛒 Customer Home</div>
+<div class="ssm" style="background:#0D1117;min-height:155px;align-items:stretch;padding:0">
+<div style="position:absolute;left:0;top:0;bottom:0;width:17%;background:#161B22;border-right:1px solid #2E3A4E;display:flex;flex-direction:column;align-items:center;padding:10px 5px;gap:5px">
+<div style="width:18px;height:18px;border-radius:50%;background:rgba(27,138,90,.4);border:1px solid #1B8A5A"></div>
+<div style="width:18px;height:18px;border-radius:50%;background:#1E2530;border:1px solid #2E3A4E"></div>
+<div style="width:18px;height:18px;border-radius:50%;background:#1E2530;border:1px solid #2E3A4E"></div>
+</div>
+<div style="position:absolute;left:17%;right:27%;top:0;bottom:0;padding:8px">
+<div style="width:100%;height:40px;background:linear-gradient(90deg,rgba(27,138,90,.3),rgba(244,168,37,.2));border-radius:6px;margin-bottom:7px"></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+<div style="height:36px;background:#252D3A;border-radius:5px;border:1px solid #2E3A4E"></div>
+<div style="height:36px;background:#252D3A;border-radius:5px;border:1px solid #2E3A4E"></div>
+<div style="height:36px;background:#252D3A;border-radius:5px;border:1px solid #2E3A4E"></div>
+<div style="height:36px;background:#252D3A;border-radius:5px;border:1px solid #2E3A4E"></div>
+</div>
+</div>
+<div style="position:absolute;right:0;top:0;bottom:0;width:27%;background:#161B22;border-left:1px solid #2E3A4E;padding:7px;display:flex;flex-direction:column;gap:4px">
+<div style="width:70%;height:5px;background:rgba(27,138,90,.4);border-radius:2px"></div>
+<div style="width:100%;height:5px;background:#1E2530;border-radius:2px"></div>
+<div style="width:100%;height:5px;background:#1E2530;border-radius:2px"></div>
+<div style="margin-top:5px;width:70%;height:5px;background:rgba(27,138,90,.4);border-radius:2px"></div>
+<div style="width:100%;height:5px;background:#1E2530;border-radius:2px"></div>
+</div>
+</div>
+<div class="ssc">Sidebar &middot; Product grid &middot; Cart &amp; robot status</div>
+</div>
+<div class="ssi">
+<div class="ssl">📡 Mission Control</div>
+<div class="ssm" style="background:#0D1117;min-height:155px;align-items:stretch;padding:0">
+<div style="position:absolute;top:0;left:0;right:0;height:26px;background:#161B22;border-bottom:1px solid #2E3A4E;display:flex;align-items:center;padding:0 10px;gap:6px">
+<div style="width:48px;height:13px;background:rgba(67,160,71,.3);border-radius:10px"></div>
+<div style="width:28px;height:8px;background:#484F58;border-radius:2px"></div>
+</div>
+<div style="position:absolute;top:26px;bottom:0;left:0;right:0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;padding:5px">
+<div style="background:#1E2530;border-radius:5px;border:1px solid #2E3A4E"></div>
+<div style="background:#1E2530;border-radius:5px;border:1px solid #2E3A4E"></div>
+<div style="background:#1E2530;border-radius:5px;border:1px solid #2E3A4E"></div>
+</div>
+</div>
+<div class="ssc">3-zone dashboard &middot; Live events &middot; 14 mission states</div>
+</div>
+<div class="ssi">
+<div class="ssl">💳 Checkout</div>
+<div class="ssm" style="background:#0D1117;min-height:130px;flex-direction:column;padding:12px;gap:8px">
+<div style="width:90%;background:rgba(30,37,48,.8);border:1px solid rgba(46,58,78,.8);border-radius:9px;padding:9px;backdrop-filter:blur(6px)">
+<div style="width:100%;height:32px;background:linear-gradient(135deg,#1a2a3a,#253040);border-radius:6px;border:1px solid rgba(46,58,78,.6)"></div>
+<div style="display:flex;flex-direction:column;gap:4px;margin-top:7px">
+<div style="width:100%;height:5px;background:#1E2530;border-radius:2px"></div>
+<div style="width:60%;height:5px;background:#1E2530;border-radius:2px"></div>
+</div>
+</div>
+<div style="width:90%;height:20px;background:linear-gradient(90deg,#1B8A5A,#2ECC8E);border-radius:5px"></div>
+</div>
+<div class="ssc">Glassmorphism &middot; Animated entry &middot; Auto-navigate</div>
+</div>
+<div class="ssi">
+<div class="ssl">🛍️ Cart</div>
+<div class="ssm" style="background:#0D1117;min-height:130px;flex-direction:column;padding:10px;gap:5px;justify-content:flex-start">
+<div style="width:100%;height:18px;background:#161B22;border-radius:5px;display:flex;align-items:center;padding:0 7px;gap:5px">
+<div style="width:10px;height:10px;border-radius:50%;background:#1E2530"></div>
+<div style="width:35px;height:6px;background:#484F58;border-radius:2px"></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:4px;width:100%">
+<div style="width:100%;height:26px;background:#252D3A;border-radius:5px;border:1px solid #2E3A4E"></div>
+<div style="width:100%;height:26px;background:#252D3A;border-radius:5px;border:1px solid #2E3A4E"></div>
+<div style="width:100%;height:26px;background:#252D3A;border-radius:5px;border:1px solid #2E3A4E"></div>
+</div>
+</div>
+<div class="ssc">Item list &middot; Qty controls &middot; Running total</div>
+</div>
+<div class="ssi">
+<div class="ssl">🔧 Worker Dashboard</div>
+<div class="ssm" style="background:#0D1117;min-height:130px;flex-direction:column;align-items:stretch;padding:0">
+<div style="width:100%;height:22px;background:#161B22;border-bottom:1px solid #2E3A4E"></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:7px">
+<div style="height:60px;background:#1E2530;border-radius:6px;border:1px solid #2E3A4E;display:flex;align-items:center;justify-content:center">
+<div style="display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:2px;width:42px;height:42px">
+<div style="background:transparent"></div><div style="background:rgba(27,138,90,.5);border-radius:3px"></div><div style="background:transparent"></div>
+<div style="background:rgba(27,138,90,.5);border-radius:3px"></div><div style="background:rgba(229,57,53,.4);border-radius:3px"></div><div style="background:rgba(27,138,90,.5);border-radius:3px"></div>
+<div style="background:transparent"></div><div style="background:rgba(27,138,90,.5);border-radius:3px"></div><div style="background:transparent"></div>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:4px">
+<div style="height:28px;background:#1E2530;border-radius:5px;border:1px solid #2E3A4E;display:flex;align-items:center;padding:0 7px;gap:4px">
+<div style="width:7px;height:7px;border-radius:50%;background:#2ECC8E"></div>
+<div style="width:35px;height:5px;background:#484F58;border-radius:2px"></div>
+</div>
+<div style="height:28px;background:#1E2530;border-radius:5px;border:1px solid #2E3A4E;display:flex;align-items:center;padding:0 7px">
+<div style="width:55%;height:5px;background:linear-gradient(90deg,#1B8A5A,#2ECC8E);border-radius:3px"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="ssc">D-pad teleop &middot; Battery &middot; Mode switch</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- SLIDE 5 STATUS -->
+<div class="slide" id="s5">
+<div class="grid"></div>
+<div class="glow" style="width:480px;height:480px;background:rgba(27,138,90,.11);bottom:-140px;right:-90px"></div>
+<div class="glow" style="width:280px;height:280px;background:rgba(244,168,37,.08);top:-70px;left:-50px"></div>
+<div class="inner" style="text-align:center;display:flex;flex-direction:column;align-items:center">
+<div class="ey">Slide 05 &middot; Status &amp; Next Steps</div>
+<h2>Where We Are</h2>
+<div class="bar" style="margin:0 auto 24px"></div>
+<div class="g3" style="width:100%;text-align:left;margin-bottom:24px">
+<div class="card"><span class="ci">&#9989;</span><div class="ct">Done &mdash; Front-End</div><div class="cb">9 screens &middot; 30+ widgets &middot; Design system<br>Auth flow &middot; Role guards &middot; Dual theme<br>Cart + Checkout + Mission Control<br>Worker teleop dashboard<br>WebSocket integration hooks</div></div>
+<div class="card"><span class="ci">&#128260;</span><div class="ct">In Progress</div><div class="cb">Real WebSocket backend wiring<br>RFID scan flow end-to-end<br>Storage open/close confirmation<br>Product catalogue from API<br>Error boundary &amp; retry UI</div></div>
+<div class="card"><span class="ci">&#128640;</span><div class="ct">Next Milestones</div><div class="cb">Full robot &#8596; GUI integration<br>End-to-end order simulation<br>Performance audit<br>Unit &amp; widget test coverage<br>Deployment to tablet kiosks</div></div>
+</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:28px">
+<span class="tag tg">Flutter Desktop ✓</span>
+<span class="tag tg">Riverpod ✓</span>
+<span class="tag tg">GoRouter ✓</span>
+<span class="tag tg">Dark/Light Theme ✓</span>
+<span class="tag tg">WebSocket Hooks ✓</span>
+<span class="tag ty">Backend Wiring 🔄</span>
+<span class="tag ty">E2E Tests 🔄</span>
+<span class="tag tb">Tablet Deploy 🚀</span>
+</div>
+<div style="font-size:30px">🤖 🌿</div>
+<div style="margin-top:10px;font-size:15px;color:var(--t2)">Pluto &mdash; Autonomous Shopping, Delivered.</div>
+</div>
+</div>
+
+</div>
+
+<div class="nav">
+<button onclick="go(-1)">&#8592;</button>
+<div class="ndots" id="dots"></div>
+<div class="nctr" id="ctr">1 / 5</div>
+<button onclick="go(1)">&#8594;</button>
+</div>
+
+<script>
+const N=5;let cur=1;
+function buildDots(){const c=document.getElementById('dots');for(let i=1;i<=N;i++){const d=document.createElement('div');d.className='nd'+(i===1?' on':'');d.onclick=()=>jump(i);c.appendChild(d);}}
+function updateUI(){document.getElementById('ctr').textContent=`${cur} / ${N}`;document.getElementById('tb').style.width=`${(cur/N)*100}%`;document.querySelectorAll('.nd').forEach((d,i)=>d.classList.toggle('on',i+1===cur));}
+function jump(next){if(next<1||next>N||next===cur)return;const fwd=next>cur;const old=document.getElementById(`s${cur}`);const nw=document.getElementById(`s${next}`);old.classList.remove('active');old.classList.add('prev');nw.style.transform=fwd?'translateX(50px)':'translateX(-50px)';nw.style.opacity='0';nw.style.transition='none';requestAnimationFrame(()=>requestAnimationFrame(()=>{nw.style.transition='';nw.classList.add('active');nw.style.transform='';nw.style.opacity='';}));setTimeout(()=>{old.classList.remove('prev');old.style.transform='';old.style.opacity='';},500);cur=next;updateUI();}
+function go(d){jump(cur+d);}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowDown')go(1);if(e.key==='ArrowLeft'||e.key==='ArrowUp')go(-1);});
+buildDots();updateUI();
+</script>
+</body>
+</html>
+
