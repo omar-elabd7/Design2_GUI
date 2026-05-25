@@ -9,6 +9,8 @@ import '../../../../core/constants/asset_paths.dart';
 import '../../../../core/routing/route_names.dart';
 import '../../../../core/providers/theme_provider.dart';
 import '../../../../shared/models/enums.dart';
+import '../../../../shared/models/robot_status.dart';
+import '../../../../features/robot_status/presentation/providers/robot_status_provider.dart';
 import '../providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerWidget {
@@ -987,18 +989,44 @@ class _SignInButton extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// STATUS BAR
+// STATUS BAR  — live data from WebSocket via robotStatusProvider
 // ---------------------------------------------------------------------------
 
-class _StatusBar extends StatelessWidget {
+class _StatusBar extends ConsumerWidget {
   final bool isDark;
   const _StatusBar({required this.isDark});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(robotStatusProvider);
     final bg = isDark
         ? Colors.black.withValues(alpha: 0.45)
         : Colors.white.withValues(alpha: 0.70);
+
+    // ── Derive display values from live status ──────────────────────────────
+    final isConnected = status.isConnected;
+
+    // Navigation / mode chip
+    final (navIcon, navColor, navLabel) = _navChip(status);
+
+    // Battery chip
+    final battery = status.batteryPercent;
+    final batColor = battery > 50
+        ? AppColors.success
+        : battery > 20
+        ? AppColors.warning
+        : AppColors.danger;
+    final batIcon = battery > 80
+        ? Icons.battery_full_rounded
+        : battery > 50
+        ? Icons.battery_5_bar_rounded
+        : battery > 20
+        ? Icons.battery_3_bar_rounded
+        : Icons.battery_alert_rounded;
+    final batLabel = isConnected ? 'Battery $battery%' : 'Battery --';
+
+    // Mission / RFID chip
+    final (rfidIcon, rfidColor, rfidLabel) = _rfidChip(status);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
@@ -1014,30 +1042,97 @@ class _StatusBar extends StatelessWidget {
       child: Row(
         children: [
           _StatusChip(
-            icon: Icons.circle,
-            iconColor: AppColors.success,
-            label: 'Navigation Active',
+            icon: navIcon,
+            iconColor: navColor,
+            label: navLabel,
             isDark: isDark,
           ),
           const SizedBox(width: 28),
           _StatusChip(
-            icon: Icons.battery_full_rounded,
-            iconColor: AppColors.success,
-            label: 'Battery 87%',
+            icon: batIcon,
+            iconColor: batColor,
+            label: batLabel,
             isDark: isDark,
           ),
           const SizedBox(width: 28),
           _StatusChip(
-            icon: Icons.credit_card_outlined,
-            iconColor: isDark
-                ? AppColors.textSecondary
-                : AppColors.lightTextSecondary,
-            label: 'RFID Access',
+            icon: rfidIcon,
+            iconColor: rfidColor,
+            label: rfidLabel,
             isDark: isDark,
           ),
         ],
       ),
     );
+  }
+
+  /// Returns (icon, color, label) for the navigation/mode chip.
+  (IconData, Color, String) _navChip(RobotStatus s) {
+    if (!s.isConnected) {
+      return (Icons.circle_outlined, AppColors.textMuted, 'Robot Offline');
+    }
+    return switch (s.missionState) {
+      MissionState.navigatingToUser || MissionState.returningToBase => (
+        Icons.navigation_rounded,
+        AppColors.success,
+        'Navigating',
+      ),
+      MissionState.awaitingRfid => (
+        Icons.nfc_rounded,
+        AppColors.warning,
+        'Awaiting RFID',
+      ),
+      MissionState.rfidVerified => (
+        Icons.verified_rounded,
+        AppColors.success,
+        'RFID Verified',
+      ),
+      MissionState.deliveryComplete => (
+        Icons.check_circle_rounded,
+        AppColors.success,
+        'Delivery Done',
+      ),
+      MissionState.failed => (
+        Icons.error_rounded,
+        AppColors.danger,
+        'Mission Failed',
+      ),
+      MissionState.idle => (
+        Icons.circle,
+        AppColors.success,
+        'Navigation Active',
+      ),
+      _ => (Icons.circle, AppColors.primaryLight, s.missionState.name),
+    };
+  }
+
+  /// Returns (icon, color, label) for the RFID/mission chip.
+  (IconData, Color, String) _rfidChip(RobotStatus s) {
+    if (!s.isConnected) {
+      return (
+        Icons.credit_card_off_outlined,
+        AppColors.textMuted,
+        'RFID Offline',
+      );
+    }
+    if (s.faultType != FaultType.none) {
+      return (
+        Icons.warning_amber_rounded,
+        AppColors.danger,
+        'Fault: ${s.faultType.name}',
+      );
+    }
+    if (s.missionState == MissionState.awaitingRfid) {
+      return (Icons.nfc_rounded, AppColors.warning, 'Tap RFID Card');
+    }
+    if (s.activeOrderId != null) {
+      return (
+        Icons.credit_card_rounded,
+        AppColors.primaryLight,
+        'Order: ${s.activeOrderId}',
+      );
+    }
+    return (Icons.credit_card_outlined, AppColors.success, 'RFID Ready');
   }
 }
 
@@ -1196,4 +1291,3 @@ class _AmbientGlow extends StatelessWidget {
     );
   }
 }
-
