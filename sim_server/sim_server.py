@@ -292,7 +292,12 @@ async def run_mission(order_id: str, items: list):
         # ── 1. Mission Received ────────────────────────────────────────────────
         robot.mission_state = "missionReceived"
         await _emit_event(order_id, "orderReceived", "Mission received! Processing order...", 5)
-        await asyncio.sleep(1.5)
+        # Hold missionReceived long enough for Flutter to navigate to the
+        # tracking screen and render the first timeline step as green.
+        # Re-broadcast status every second so late-joining clients catch it.
+        for _ in range(4):
+            await asyncio.sleep(1.0)
+            await broadcast(robot.status_msg())
 
         # ── 2. Heading to Fruit ───────────────────────────────────────────────
         robot.mission_state = "headingToFruit"
