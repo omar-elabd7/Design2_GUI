@@ -24,6 +24,11 @@ const String kMsgOrderCancel = 'order.cancel';
 const String kMsgMissionStart = 'mission.start';
 const String kMsgMissionStop = 'mission.stop';
 
+// ── SEND: Session ────────────────────────────────────────────────────────────
+/// Sent immediately after a successful login so the backend/robot knows
+/// which user is now active (id, name, role, rfid, credits, token).
+const String kMsgUserSession = 'user.session';
+
 // ── SEND: Authentication / Payment ──────────────────────────────────────────
 const String kMsgRfidVerification = 'rfid.verification';
 const String kMsgPaymentRequest = 'payment.request';
@@ -64,6 +69,10 @@ const String kMsgEventLog = 'event.log';
 // ── RECEIVE: Authentication / Payment ────────────────────────────────────────
 const String kMsgRfidResult = 'rfid.result';
 const String kMsgPaymentRequired = 'payment.required';
+
+// ── RECEIVE: Session ─────────────────────────────────────────────────────────
+/// Backend acknowledgement of a received user.session message.
+const String kMsgUserSessionAck = 'user.session_ack';
 
 // ── RECEIVE: Connection / Health ─────────────────────────────────────────────
 const String kMsgConnectionStatus = 'connection.status';
@@ -328,6 +337,73 @@ class RfidSimulationMsg {
     'rfid_card_id': rfidCardId,
     'order_id': orderId,
     'should_succeed': shouldSucceed,
+    'timestamp': DateTime.now().toIso8601String(),
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+/// [SEND] Announce the signed-in user to the backend immediately after login.
+/// The backend stores this as the "active session" so it can:
+///   • pre-load the user's RFID for delivery verification
+///   • link any incoming orders to the right user
+///   • display the user name on the worker dashboard
+///   • log session start / end events
+///
+/// Also sent on logout with [isLogout] = true so the backend clears the
+/// active session state.
+///
+/// Example JSON (login):
+/// {
+///   "type": "user.session",
+///   "user_id": "user_001",
+///   "username": "ahmed_hassan",
+///   "name": "Ahmed Hassan",
+///   "role": "customer",
+///   "rfid_card_id": "RFID_A1B2C3",
+///   "credits": 150.0,
+///   "session_token": "tok_abc123",
+///   "is_logout": false,
+///   "timestamp": "2026-05-25T10:00:00.000Z"
+/// }
+///
+/// Example JSON (logout):
+/// { "type": "user.session", "user_id": "user_001", "is_logout": true, ... }
+// ─────────────────────────────────────────────────────────────────────────────
+class UserSessionMsg {
+  const UserSessionMsg({
+    required this.userId,
+    required this.username,
+    required this.name,
+    required this.role,
+    required this.rfidCardId,
+    required this.credits,
+    required this.sessionToken,
+    this.isLogout = false,
+  });
+
+  final String userId;
+  final String username;
+  final String name;
+
+  /// 'customer' | 'worker'
+  final String role;
+  final String rfidCardId;
+  final double credits;
+  final String sessionToken;
+
+  /// true when this message signals a logout / session end.
+  final bool isLogout;
+
+  Map<String, dynamic> toMap() => {
+    'type': kMsgUserSession,
+    'user_id': userId,
+    'username': username,
+    'name': name,
+    'role': role,
+    'rfid_card_id': rfidCardId,
+    'credits': credits,
+    'session_token': sessionToken,
+    'is_logout': isLogout,
     'timestamp': DateTime.now().toIso8601String(),
   };
 }
@@ -1085,6 +1161,56 @@ class CartItemPayload {
   };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+/// [RECEIVE] Backend acknowledgement of a user.session message.
+/// Flutter can use this to confirm the session was registered on the backend,
+/// and to refresh credits from the server's authoritative value.
+///
+/// Example JSON:
+/// {
+///   "type": "user.session_ack",
+///   "user_id": "user_001",
+///   "username": "ahmed_hassan",
+///   "credits": 150.0,
+///   "active_session": true,
+///   "message": "Session registered",
+///   "timestamp": "2026-05-25T10:00:00.100Z"
+/// }
+// ─────────────────────────────────────────────────────────────────────────────
+class UserSessionAckMsg {
+  const UserSessionAckMsg({
+    required this.userId,
+    required this.username,
+    required this.credits,
+    required this.activeSession,
+    required this.message,
+    required this.timestamp,
+  });
+
+  final String userId;
+  final String username;
+
+  /// Server-authoritative credit balance — use this to update Flutter state.
+  final double credits;
+
+  /// false if this was a logout acknowledgement.
+  final bool activeSession;
+  final String message;
+  final DateTime timestamp;
+
+  factory UserSessionAckMsg.fromMap(Map<String, dynamic> map) =>
+      UserSessionAckMsg(
+        userId: map['user_id'] as String? ?? '',
+        username: map['username'] as String? ?? '',
+        credits: (map['credits'] as num?)?.toDouble() ?? 0.0,
+        activeSession: map['active_session'] as bool? ?? false,
+        message: map['message'] as String? ?? '',
+        timestamp: map['timestamp'] != null
+            ? DateTime.parse(map['timestamp'] as String)
+            : DateTime.now(),
+      );
+}
+
 // =============================================================================
 // MESSAGE DISPATCHER HELPER
 // Parses any incoming WebSocket message by its 'type' field.
@@ -1135,6 +1261,8 @@ Object? parseIncomingMessage(Map<String, dynamic> map) {
       return BatteryStatusMsg.fromMap(map);
     case kMsgSystemHealth:
       return SystemHealthMsg.fromMap(map);
+    case kMsgUserSessionAck:
+      return UserSessionAckMsg.fromMap(map);
     default:
       return null;
   }

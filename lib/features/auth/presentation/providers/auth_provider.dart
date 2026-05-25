@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/models/app_user.dart';
 import '../../../../shared/dto/login_request_dto.dart';
+import '../../../../shared/messages/app_messages.dart';
 import '../../../../infrastructure/dependency_injection/providers.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/services/logger_service.dart';
@@ -63,6 +64,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
         sessionToken: response.sessionToken,
         isLoading: false,
       );
+
+      // ── Announce session to backend/robot over WebSocket ──────────────────
+      if (kUseLiveBackend) {
+        final ws = _ref.read(webSocketClientProvider);
+        ws.send(
+          UserSessionMsg(
+            userId: response.user.id,
+            username: response.user.username,
+            name: response.user.name,
+            role: response.user.role.name,
+            rfidCardId: response.user.rfidCardId,
+            credits: response.user.credits,
+            sessionToken: response.sessionToken,
+          ).toMap(),
+        );
+      }
+
       logger.info('Login success: ${response.user.username}', tag: 'Auth');
     } catch (e) {
       state = state.copyWith(
@@ -74,6 +92,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    // Notify backend that session is ending before clearing local state
+    if (kUseLiveBackend && state.user != null) {
+      final user = state.user!;
+      final token = state.sessionToken ?? '';
+      final ws = _ref.read(webSocketClientProvider);
+      ws.send(
+        UserSessionMsg(
+          userId: user.id,
+          username: user.username,
+          name: user.name,
+          role: user.role.name,
+          rfidCardId: user.rfidCardId,
+          credits: user.credits,
+          sessionToken: token,
+          isLogout: true,
+        ).toMap(),
+      );
+    }
     await _ref.read(authRepositoryProvider).logout();
     state = const AuthState();
     logger.info('Logged out', tag: 'Auth');
