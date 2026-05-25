@@ -44,15 +44,15 @@ class _RobotLiveStatusCardState extends State<RobotLiveStatusCard>
     final s = widget.status;
     final d = widget.isDark;
 
-    final isOnline = s.mode == RobotMode.online ||
-        s.mode == RobotMode.autonomous;
+    final isOnline =
+        s.mode == RobotMode.online || s.mode == RobotMode.autonomous;
 
     final stateLabel = _missionLabel(s.missionState);
     final batteryColor = s.batteryPercent > 50
         ? AppColors.batteryHigh
         : s.batteryPercent > 20
-            ? AppColors.batteryMedium
-            : AppColors.batteryLow;
+        ? AppColors.batteryMedium
+        : AppColors.batteryLow;
 
     return GlassPanel(
       isDark: d,
@@ -96,9 +96,7 @@ class _RobotLiveStatusCardState extends State<RobotLiveStatusCard>
                       // Pulsating ring
                       _PulseRing(
                         progress: _radarCtrl.value,
-                        color: isOnline
-                            ? AppColors.primary
-                            : AppColors.danger,
+                        color: isOnline ? AppColors.primary : AppColors.danger,
                       ),
                       // Inner glow
                       Container(
@@ -108,9 +106,7 @@ class _RobotLiveStatusCardState extends State<RobotLiveStatusCard>
                           shape: BoxShape.circle,
                           gradient: RadialGradient(
                             colors: [
-                              (isOnline
-                                      ? AppColors.primary
-                                      : AppColors.danger)
+                              (isOnline ? AppColors.primary : AppColors.danger)
                                   .withValues(alpha: 0.22),
                               Colors.transparent,
                             ],
@@ -153,8 +149,8 @@ class _RobotLiveStatusCardState extends State<RobotLiveStatusCard>
                   s.batteryPercent > 80
                       ? Icons.battery_full_rounded
                       : s.batteryPercent > 20
-                          ? Icons.battery_3_bar_rounded
-                          : Icons.battery_alert_rounded,
+                      ? Icons.battery_3_bar_rounded
+                      : Icons.battery_alert_rounded,
                   size: 14,
                   color: batteryColor,
                 ),
@@ -173,11 +169,7 @@ class _RobotLiveStatusCardState extends State<RobotLiveStatusCard>
           const SizedBox(height: 6),
 
           // -- State ------------------------------------------------------
-          _InfoRow(
-            label: 'State',
-            value: stateLabel,
-            isDark: d,
-          ),
+          _InfoRow(label: 'State', value: stateLabel, isDark: d),
         ],
       ),
     );
@@ -187,15 +179,20 @@ class _RobotLiveStatusCardState extends State<RobotLiveStatusCard>
     switch (state) {
       case MissionState.idle:
         return 'Idle';
-      case MissionState.navigatingToUser:
+      case MissionState.headingToFruit:
+        return 'To Fruit';
+      case MissionState.visionChecking:
+        return 'Checking';
+      case MissionState.storing:
+        return 'Collecting';
+      case MissionState.headingToCustomer:
         return 'Delivering';
-      case MissionState.returningToBase:
+      case MissionState.returning:
         return 'Returning';
-      case MissionState.arrived:
-      case MissionState.awaitingRfid:
-        return 'Arrived';
-      case MissionState.preparingOrder:
-        return 'Preparing';
+      case MissionState.rfidAwaiting:
+        return 'RFID Wait';
+      case MissionState.storageOpened:
+        return 'Collect Now';
       default:
         return state.name;
     }
@@ -252,15 +249,17 @@ class _InfoRow extends StatelessWidget {
         Text(
           label,
           style: AppTextStyles.labelMedium.copyWith(
-            color:
-                isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+            color: isDark
+                ? AppColors.textSecondary
+                : AppColors.lightTextSecondary,
           ),
         ),
         child ??
             Text(
               value ?? '',
               style: AppTextStyles.labelLarge.copyWith(
-                color: valueColor ??
+                color:
+                    valueColor ??
                     (isDark
                         ? AppColors.textPrimary
                         : AppColors.lightTextPrimary),

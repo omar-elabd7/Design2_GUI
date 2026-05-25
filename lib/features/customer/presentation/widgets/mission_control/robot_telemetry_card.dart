@@ -32,17 +32,18 @@ class RobotTelemetryCard extends StatelessWidget {
 
   String _speedLabel() {
     switch (missionState) {
-      case MissionState.navigatingToUser:
-      case MissionState.returningToBase:
+      case MissionState.headingToFruit:
+      case MissionState.headingToCustomer:
         return '0.8 m/s';
-      case MissionState.preparingOrder:
+      case MissionState.returning:
+        return '0.5 m/s';
+      case MissionState.storing:
         return '0.3 m/s';
       case MissionState.idle:
-      case MissionState.arrived:
-      case MissionState.awaitingRfid:
-      case MissionState.rfidVerified:
+      case MissionState.visionChecking:
+      case MissionState.rfidAwaiting:
       case MissionState.storageOpened:
-      case MissionState.deliveryComplete:
+      case MissionState.storageClosed:
         return '0.0 m/s';
       default:
         return '0.0 m/s';
@@ -60,12 +61,19 @@ class RobotTelemetryCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.smart_toy_outlined,
-                  size: 16, color: AppColors.primaryLight),
+              const Icon(
+                Icons.smart_toy_outlined,
+                size: 16,
+                color: AppColors.primaryLight,
+              ),
               const SizedBox(width: 8),
-              Text('ROBOT STATUS',
-                  style: AppTextStyles.labelLarge
-                      .copyWith(letterSpacing: 1.2, fontSize: 11)),
+              Text(
+                'ROBOT STATUS',
+                style: AppTextStyles.labelLarge.copyWith(
+                  letterSpacing: 1.2,
+                  fontSize: 11,
+                ),
+              ),
               const Spacer(),
               _ConnectionDot(isConnected: isConnected),
             ],
@@ -131,8 +139,9 @@ class _ConnectionDotState extends State<_ConnectionDot>
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1000))
-      ..repeat(reverse: true);
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..repeat(reverse: true);
   }
 
   @override
@@ -202,11 +211,14 @@ class _TelemetryRow extends StatelessWidget {
         const SizedBox(width: 8),
         SizedBox(
           width: 60,
-          child: Text(label,
-              style: AppTextStyles.bodySmall.copyWith(fontSize: 11)),
+          child: Text(
+            label,
+            style: AppTextStyles.bodySmall.copyWith(fontSize: 11),
+          ),
         ),
         Expanded(
-          child: trailing ??
+          child:
+              trailing ??
               Text(
                 value ?? '',
                 style: AppTextStyles.labelLarge.copyWith(
@@ -234,8 +246,7 @@ class _BatteryBar extends StatelessWidget {
         const Spacer(),
         Text(
           '$percent%',
-          style:
-              AppTextStyles.labelLarge.copyWith(fontSize: 12, color: color),
+          style: AppTextStyles.labelLarge.copyWith(fontSize: 12, color: color),
         ),
         const SizedBox(width: 8),
         SizedBox(
@@ -247,7 +258,9 @@ class _BatteryBar extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(3),
                   border: Border.all(
-                      color: color.withValues(alpha: 0.4), width: 1),
+                    color: color.withValues(alpha: 0.4),
+                    width: 1,
+                  ),
                 ),
               ),
               FractionallySizedBox(

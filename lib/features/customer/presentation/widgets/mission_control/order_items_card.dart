@@ -21,16 +21,13 @@ class OrderItemsCard extends StatelessWidget {
   final double totalPrice;
   final bool isDark;
 
-  /// Items considered "collected" once delivery is past the preparing stage.
   bool _isCollected(int index) {
     const collectedStates = {
-      MissionState.navigatingToUser,
-      MissionState.arrived,
-      MissionState.awaitingRfid,
-      MissionState.rfidVerified,
+      MissionState.headingToCustomer,
+      MissionState.rfidAwaiting,
       MissionState.storageOpened,
-      MissionState.deliveryComplete,
-      MissionState.returningToBase,
+      MissionState.storageClosed,
+      MissionState.returning,
     };
     return collectedStates.contains(missionState);
   }

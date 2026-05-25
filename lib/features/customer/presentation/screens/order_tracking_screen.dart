@@ -20,6 +20,8 @@ import '../widgets/mission_control/environment_status_card.dart';
 import '../widgets/mission_control/order_items_card.dart';
 import '../widgets/mission_control/rfid_scan_panel.dart';
 import '../widgets/mission_control/mission_alert_banner.dart';
+import '../../../../core/constants/api_constants.dart';
+import '../../../../shared/messages/app_messages.dart';
 
 /// **Pluto Mission Control** -- full 3-zone mission dashboard.
 ///
@@ -46,10 +48,11 @@ class OrderTrackingScreen extends ConsumerWidget {
     final missionState = robotStatus.missionState;
     final faultType = robotStatus.faultType;
     final isComplete =
-        missionState == MissionState.deliveryComplete ||
-        missionState == MissionState.returningToBase;
+        missionState == MissionState.storageClosed ||
+        missionState == MissionState.returning;
     final hasFault = faultType != FaultType.none;
-    final isRfid = missionState == MissionState.awaitingRfid;
+    final isRfid = missionState == MissionState.rfidAwaiting;
+    final isStorageOpen = missionState == MissionState.storageOpened;
 
     return Scaffold(
       backgroundColor: isDark
@@ -117,6 +120,7 @@ class OrderTrackingScreen extends ConsumerWidget {
                           faultType: faultType,
                           batteryPercent: robotStatus.batteryPercent,
                           isRfid: isRfid,
+                          isStorageOpen: isStorageOpen,
                           hasFault: hasFault,
                           isComplete: isComplete,
                           orderId: orderId,
@@ -271,6 +275,7 @@ class _CenterZone extends StatefulWidget {
     required this.faultType,
     required this.batteryPercent,
     required this.isRfid,
+    required this.isStorageOpen,
     required this.hasFault,
     required this.isComplete,
     required this.orderId,
@@ -281,6 +286,7 @@ class _CenterZone extends StatefulWidget {
   final FaultType faultType;
   final int batteryPercent;
   final bool isRfid;
+  final bool isStorageOpen;
   final bool hasFault;
   final bool isComplete;
   final String orderId;
@@ -297,6 +303,7 @@ class _CenterZoneState extends State<_CenterZone>
   String get _layoutKey {
     if (widget.hasFault) return 'fault_${widget.faultType.name}';
     if (widget.isComplete) return 'complete';
+    if (widget.isStorageOpen) return 'storage_open';
     if (widget.isRfid) return 'rfid';
     return 'progress_${widget.missionState.name}';
   }
@@ -344,23 +351,28 @@ class _CenterZoneState extends State<_CenterZone>
                   ),
                   const SizedBox(height: 24),
                 ],
-                // -- RFID state: panel BESIDE the robot --
-                if (widget.isRfid && !widget.hasFault)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      MissionProgressCircle(
-                        missionState: widget.missionState,
-                        faultType: widget.faultType,
-                        batteryPercent: widget.batteryPercent,
-                        isDark: widget.isDark,
-                      ),
-                      const SizedBox(width: 32),
-                      RfidScanPanel(isDark: widget.isDark),
-                    ],
-                  )
-                else if (!widget.isComplete || widget.hasFault)
+                // -- Storage opened: "I took my order" panel --
+                if (widget.isStorageOpen && !widget.hasFault) ...[
+                  MissionProgressCircle(
+                    missionState: widget.missionState,
+                    faultType: widget.faultType,
+                    batteryPercent: widget.batteryPercent,
+                    isDark: widget.isDark,
+                  ),
+                  const SizedBox(height: 20),
+                  _CollectOrderPanel(isDark: widget.isDark),
+                ] else
+                // -- RFID state: panel BELOW the robot --
+                if (widget.isRfid && !widget.hasFault) ...[
+                  MissionProgressCircle(
+                    missionState: widget.missionState,
+                    faultType: widget.faultType,
+                    batteryPercent: widget.batteryPercent,
+                    isDark: widget.isDark,
+                  ),
+                  const SizedBox(height: 20),
+                  RfidScanPanel(isDark: widget.isDark),
+                ] else if (!widget.isComplete || widget.hasFault)
                   MissionProgressCircle(
                     missionState: widget.missionState,
                     faultType: widget.faultType,
@@ -688,3 +700,132 @@ class _ThemeToggle extends ConsumerWidget {
   }
 }
 
+// =============================================================================
+// _CollectOrderPanel
+// =============================================================================
+
+/// Pulsing green card + "I Took My Order" button shown during [storageOpened].
+class _CollectOrderPanel extends ConsumerStatefulWidget {
+  const _CollectOrderPanel({required this.isDark});
+  final bool isDark;
+
+  @override
+  ConsumerState<_CollectOrderPanel> createState() => _CollectOrderPanelState();
+}
+
+class _CollectOrderPanelState extends ConsumerState<_CollectOrderPanel>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseCtrl;
+  late Animation<double> _pulseAnim;
+  bool _sent = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _pulseAnim = Tween<double>(
+      begin: 0.55,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _pulseCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onTap() {
+    if (_sent) return;
+    setState(() => _sent = true);
+    if (kUseLiveBackend) {
+      ref.read(webSocketClientProvider).send({'type': kMsgStorageCloseRequest});
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('✓ Order collected — closing storage…'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final green = const Color(0xFF34C77B);
+    final bg = widget.isDark
+        ? const Color(0xFF0F2A1E)
+        : const Color(0xFFE8FFF4);
+
+    return AnimatedBuilder(
+      animation: _pulseAnim,
+      builder: (_, child) => Container(
+        width: 230,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: green.withValues(alpha: _pulseAnim.value),
+            width: 2.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: green.withValues(alpha: _pulseAnim.value * 0.35),
+              blurRadius: 18,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: child,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.inventory_2_outlined, color: green, size: 36),
+          const SizedBox(height: 10),
+          Text(
+            'Storage is Open',
+            style: AppTextStyles.labelLarge.copyWith(
+              color: green,
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Collect your order now',
+            style: AppTextStyles.bodySmall.copyWith(
+              color: widget.isDark ? Colors.white60 : Colors.black54,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _sent ? null : _onTap,
+              icon: Icon(_sent ? Icons.check_circle : Icons.check, size: 18),
+              label: Text(_sent ? 'Confirmed' : 'I Took My Order'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _sent ? Colors.grey.shade600 : green,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

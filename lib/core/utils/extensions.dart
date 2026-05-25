@@ -60,28 +60,22 @@ extension MissionStateExtension on MissionState {
         return 'Idle';
       case MissionState.missionReceived:
         return 'Mission Received';
-      case MissionState.preparingOrder:
-        return 'Preparing Order';
-      case MissionState.navigatingToUser:
-        return 'Navigating to User';
-      case MissionState.arrived:
-        return 'Arrived';
-      case MissionState.awaitingRfid:
+      case MissionState.headingToFruit:
+        return 'Heading to Fruit';
+      case MissionState.visionChecking:
+        return 'Checking Stock';
+      case MissionState.storing:
+        return 'Collecting Fruit';
+      case MissionState.headingToCustomer:
+        return 'Heading to Customer';
+      case MissionState.rfidAwaiting:
         return 'Awaiting RFID';
-      case MissionState.rfidVerified:
-        return 'RFID Verified';
-      case MissionState.rfidFailed:
-        return 'RFID Failed';
       case MissionState.storageOpened:
         return 'Storage Open';
-      case MissionState.deliveryComplete:
-        return 'Delivered';
-      case MissionState.returningToBase:
+      case MissionState.storageClosed:
+        return 'Storage Closed';
+      case MissionState.returning:
         return 'Returning to Base';
-      case MissionState.obstacleBlocked:
-        return 'Obstacle Detected';
-      case MissionState.lowBattery:
-        return 'Low Battery';
       case MissionState.failed:
         return 'Failed';
     }

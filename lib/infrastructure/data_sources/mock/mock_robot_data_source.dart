@@ -41,15 +41,16 @@ class MockRobotDataSource {
   static const int kMaxRfidAttempts = 3;
 
   static const _missionSteps = <(MissionState, String, int)>[
-    (MissionState.preparingOrder, 'Preparing your Order?', 3000),
-    (MissionState.navigatingToUser, 'Robot is on its way to you!', 6000),
-    (MissionState.arrived, 'Robot has arrived at your location.', 3500),
+    (MissionState.headingToFruit, 'Robot heading to fruit stock...', 4000),
+    (MissionState.visionChecking, 'Vision module checking stock...', 3000),
+    (MissionState.storing, 'Collecting fruit into storage box...', 3500),
+    (MissionState.headingToCustomer, 'Robot heading to customer!', 6000),
     (
-      MissionState.awaitingRfid,
+      MissionState.rfidAwaiting,
       'Please tap your RFID card on the robot.',
       2000,
     ),
-    // After awaitingRfid the RFID auto-verify fires (special handling)
+    // After rfidAwaiting the RFID auto-verify fires (special handling)
   ];
 
   MockRobotDataSource() {
@@ -147,31 +148,25 @@ class MockRobotDataSource {
     }
   }
 
-  /// Handles RFID verification ? storage open ? delivery complete ? RTB ? idle.
+  /// Handles RFID verification → storage open → storageClosed → returning → idle.
   void _schedulePostRfidSequence(String orderId) {
     final tail = <(MissionState, StorageState?, String, int)>[
       (
-        MissionState.rfidVerified,
+        MissionState.storageOpened,
         StorageState.opening,
         'RFID verified - unlocking storage.',
-        12000,
+        3000,
       ),
       (
-        MissionState.storageOpened,
-        StorageState.open,
-        'Storage compartment opened.',
-        4000,
-      ),
-      (
-        MissionState.deliveryComplete,
+        MissionState.storageClosed,
         StorageState.closing,
-        'Delivery complete!',
+        'Storage closed - delivery complete!',
         6000,
       ),
       (
-        MissionState.returningToBase,
+        MissionState.returning,
         StorageState.closed,
-        'Robot returning to base.',
+        'Robot returning to home position.',
         5000,
       ),
     ];
@@ -196,8 +191,8 @@ class MockRobotDataSource {
         if (_activeMissionOrderId != orderId) return;
         if (_paused) return;
 
-        // Special: emit RFID success right before rfidVerified
-        if (state == MissionState.rfidVerified) {
+        // Special: emit RFID success right before storageOpened
+        if (state == MissionState.storageOpened) {
           _rfidController.add(true);
         }
 
@@ -232,14 +227,14 @@ class MockRobotDataSource {
     _preBlockState = _status.missionState;
 
     _status = _status.copyWith(
-      missionState: MissionState.obstacleBlocked,
+      missionState: MissionState.failed,
       faultType: FaultType.obstacleBlocked,
     );
     _emitStatus();
     _emitMission(
       MissionUpdate(
         orderId: orderId,
-        state: MissionState.obstacleBlocked,
+        state: MissionState.failed,
         message: 'Robot blocked by obstacle. Mission paused.',
         timestamp: DateTime.now(),
         faultType: FaultType.obstacleBlocked,
@@ -276,7 +271,7 @@ class MockRobotDataSource {
       );
     } else {
       _status = _status.copyWith(
-        missionState: MissionState.rfidFailed,
+        missionState: MissionState.rfidAwaiting,
         faultType: FaultType.rfidFailed,
       );
     }
@@ -293,12 +288,9 @@ class MockRobotDataSource {
     );
   }
 
-  /// Simulates a **correct** RFID scan.  Clears the fault, resets attempts,
-  /// and resumes the post-RFID sequence (storage open ? delivery ? RTB).
   void simulateCorrectRfid(String orderId) {
-    // Only meaningful while in awaitingRfid or rfidFailed state
-    if (_status.missionState != MissionState.awaitingRfid &&
-        _status.missionState != MissionState.rfidFailed) {
+    // Only meaningful while in rfidAwaiting state
+    if (_status.missionState != MissionState.rfidAwaiting) {
       return;
     }
 
@@ -310,7 +302,7 @@ class MockRobotDataSource {
     _rfidController.add(true);
 
     _status = _status.copyWith(
-      missionState: MissionState.rfidVerified,
+      missionState: MissionState.storageOpened,
       faultType: FaultType.none,
       storageState: StorageState.opening,
     );
@@ -318,35 +310,29 @@ class MockRobotDataSource {
     _emitMission(
       MissionUpdate(
         orderId: orderId,
-        state: MissionState.rfidVerified,
+        state: MissionState.storageOpened,
         message: 'RFID verified - unlocking storage.',
         timestamp: DateTime.now(),
       ),
     );
 
-    // Skip directly to the post-rfidVerified tail (storage opened onward)
+    // Skip directly to the post-verified tail
     _schedulePostVerifiedTail(orderId);
   }
 
-  /// Tail sequence starting *after* rfidVerified (storage opened ? complete ? RTB ? idle).
+  /// Tail sequence starting *after* storageOpened (storageClosed → returning → idle).
   void _schedulePostVerifiedTail(String orderId) {
     final tail = <(MissionState, StorageState?, String, int)>[
       (
-        MissionState.storageOpened,
-        StorageState.open,
-        'Storage compartment opened.',
-        4000,
-      ),
-      (
-        MissionState.deliveryComplete,
+        MissionState.storageClosed,
         StorageState.closing,
-        'Delivery complete!',
+        'Storage closed - delivery complete!',
         6000,
       ),
       (
-        MissionState.returningToBase,
+        MissionState.returning,
         StorageState.closed,
-        'Robot returning to base.',
+        'Robot returning to home position.',
         5000,
       ),
     ];

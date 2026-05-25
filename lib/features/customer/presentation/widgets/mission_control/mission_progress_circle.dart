@@ -78,28 +78,22 @@ class _MissionProgressCircleState extends State<MissionProgressCircle>
         return 0.0;
       case MissionState.missionReceived:
         return 0.10;
-      case MissionState.preparingOrder:
+      case MissionState.headingToFruit:
         return 0.22;
-      case MissionState.navigatingToUser:
-        return 0.40;
-      case MissionState.arrived:
-        return 0.55;
-      case MissionState.awaitingRfid:
-        return 0.65;
-      case MissionState.rfidVerified:
-        return 0.75;
+      case MissionState.visionChecking:
+        return 0.35;
+      case MissionState.storing:
+        return 0.48;
+      case MissionState.headingToCustomer:
+        return 0.62;
+      case MissionState.rfidAwaiting:
+        return 0.74;
       case MissionState.storageOpened:
         return 0.85;
-      case MissionState.deliveryComplete:
+      case MissionState.storageClosed:
         return 1.0;
-      case MissionState.returningToBase:
+      case MissionState.returning:
         return 1.0;
-      case MissionState.rfidFailed:
-        return 0.65;
-      case MissionState.obstacleBlocked:
-        return 0.40;
-      case MissionState.lowBattery:
-        return 0.40;
       case MissionState.failed:
         return 0.0;
     }
@@ -110,19 +104,18 @@ class _MissionProgressCircleState extends State<MissionProgressCircle>
     switch (widget.missionState) {
       case MissionState.idle:
         return widget.isDark ? AppColors.textMuted : AppColors.lightTextMuted;
-      case MissionState.navigatingToUser:
-      case MissionState.returningToBase:
+      case MissionState.headingToFruit:
+      case MissionState.headingToCustomer:
+      case MissionState.returning:
         return const Color(0xFF42A5F5);
-      case MissionState.arrived:
-      case MissionState.awaitingRfid:
+      case MissionState.visionChecking:
+      case MissionState.storing:
+        return AppColors.secondary;
+      case MissionState.rfidAwaiting:
         return AppColors.warning;
-      case MissionState.deliveryComplete:
-      case MissionState.rfidVerified:
       case MissionState.storageOpened:
+      case MissionState.storageClosed:
         return AppColors.success;
-      case MissionState.rfidFailed:
-      case MissionState.obstacleBlocked:
-      case MissionState.lowBattery:
       case MissionState.failed:
         return AppColors.danger;
       default:
@@ -131,8 +124,7 @@ class _MissionProgressCircleState extends State<MissionProgressCircle>
   }
 
   String _contextMessage() {
-    if (widget.faultType != FaultType.none &&
-        widget.missionState != MissionState.rfidFailed) {
+    if (widget.faultType != FaultType.none) {
       switch (widget.faultType) {
         case FaultType.obstacleBlocked:
           return 'Obstacle detected - rerouting...';
@@ -157,28 +149,22 @@ class _MissionProgressCircleState extends State<MissionProgressCircle>
         return 'Waiting for mission...';
       case MissionState.missionReceived:
         return 'Mission accepted! Initializing...';
-      case MissionState.preparingOrder:
-        return 'Robot is preparing your order';
-      case MissionState.navigatingToUser:
-        return 'On the way to your location';
-      case MissionState.arrived:
-        return 'Robot has arrived!';
-      case MissionState.awaitingRfid:
+      case MissionState.headingToFruit:
+        return 'Heading to fruit stock area...';
+      case MissionState.visionChecking:
+        return 'Checking stock availability...';
+      case MissionState.storing:
+        return 'Collecting fruit into storage...';
+      case MissionState.headingToCustomer:
+        return 'On the way to your location!';
+      case MissionState.rfidAwaiting:
         return 'Please scan your RFID card';
-      case MissionState.rfidVerified:
-        return 'RFID verified - unlocking';
-      case MissionState.rfidFailed:
-        return 'RFID verification failed';
       case MissionState.storageOpened:
-        return 'Storage open - collect items';
-      case MissionState.deliveryComplete:
-        return '... DELIVERY COMPLETE';
-      case MissionState.returningToBase:
-        return 'Robot returning to base';
-      case MissionState.obstacleBlocked:
-        return 'Obstacle detected';
-      case MissionState.lowBattery:
-        return 'Low battery warning';
+        return 'Storage open - collect your items!';
+      case MissionState.storageClosed:
+        return 'Delivery complete 🎉';
+      case MissionState.returning:
+        return 'Robot returning to home position';
       case MissionState.failed:
         return 'Mission failed';
     }

@@ -1072,22 +1072,24 @@ class _StatusBar extends ConsumerWidget {
       return (Icons.circle_outlined, AppColors.textMuted, 'Robot Offline');
     }
     return switch (s.missionState) {
-      MissionState.navigatingToUser || MissionState.returningToBase => (
+      MissionState.headingToFruit ||
+      MissionState.headingToCustomer ||
+      MissionState.returning => (
         Icons.navigation_rounded,
         AppColors.success,
         'Navigating',
       ),
-      MissionState.awaitingRfid => (
+      MissionState.rfidAwaiting => (
         Icons.nfc_rounded,
         AppColors.warning,
         'Awaiting RFID',
       ),
-      MissionState.rfidVerified => (
+      MissionState.storageOpened => (
         Icons.verified_rounded,
         AppColors.success,
-        'RFID Verified',
+        'Storage Open',
       ),
-      MissionState.deliveryComplete => (
+      MissionState.storageClosed => (
         Icons.check_circle_rounded,
         AppColors.success,
         'Delivery Done',
@@ -1122,7 +1124,7 @@ class _StatusBar extends ConsumerWidget {
         'Fault: ${s.faultType.name}',
       );
     }
-    if (s.missionState == MissionState.awaitingRfid) {
+    if (s.missionState == MissionState.rfidAwaiting) {
       return (Icons.nfc_rounded, AppColors.warning, 'Tap RFID Card');
     }
     if (s.activeOrderId != null) {

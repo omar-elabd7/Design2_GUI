@@ -24,38 +24,34 @@ class MissionTimeline extends StatelessWidget {
       states: {MissionState.missionReceived},
     ),
     _TimelineStepData(
-      label: 'Robot Assigned',
-      icon: Icons.smart_toy_outlined,
-      states: {MissionState.preparingOrder},
-    ),
-    _TimelineStepData(
-      label: 'Navigating to Items',
+      label: 'Heading to Fruit',
       icon: Icons.navigation_rounded,
-      states: {MissionState.navigatingToUser},
+      states: {MissionState.headingToFruit},
     ),
     _TimelineStepData(
-      label: 'Collecting Items',
+      label: 'Checking Stock',
+      icon: Icons.camera_alt_outlined,
+      states: {MissionState.visionChecking},
+    ),
+    _TimelineStepData(
+      label: 'Collecting Fruit',
       icon: Icons.inventory_2_outlined,
-      states: {MissionState.arrived},
+      states: {MissionState.storing},
     ),
     _TimelineStepData(
-      label: 'Returning to Drop-off',
+      label: 'Heading to Customer',
       icon: Icons.local_shipping_rounded,
-      states: {MissionState.returningToBase},
+      states: {MissionState.headingToCustomer},
     ),
     _TimelineStepData(
       label: 'RFID Verification',
       icon: Icons.nfc_rounded,
-      states: {
-        MissionState.awaitingRfid,
-        MissionState.rfidVerified,
-        MissionState.rfidFailed,
-      },
+      states: {MissionState.rfidAwaiting},
     ),
     _TimelineStepData(
-      label: 'Delivery Complete',
+      label: 'Collect Your Order',
       icon: Icons.check_circle_outline_rounded,
-      states: {MissionState.storageOpened, MissionState.deliveryComplete},
+      states: {MissionState.storageOpened, MissionState.storageClosed},
     ),
   ];
 
@@ -63,10 +59,8 @@ class MissionTimeline extends StatelessWidget {
     for (int i = 0; i < _steps.length; i++) {
       if (_steps[i].states.contains(currentState)) return i;
     }
-    // fault states ? freeze at navigating
-    if (currentState == MissionState.obstacleBlocked ||
-        currentState == MissionState.lowBattery ||
-        currentState == MissionState.failed) {
+    // fault states → freeze at last known navigating step
+    if (currentState == MissionState.failed) {
       return 2;
     }
     return -1; // idle
@@ -110,10 +104,7 @@ class MissionTimeline extends StatelessWidget {
             final bool isFault =
                 isCurrent &&
                 faultType != FaultType.none &&
-                (currentState == MissionState.obstacleBlocked ||
-                    currentState == MissionState.lowBattery ||
-                    currentState == MissionState.failed ||
-                    currentState == MissionState.rfidFailed);
+                currentState == MissionState.failed;
 
             final Color nodeColor = isFault
                 ? AppColors.danger

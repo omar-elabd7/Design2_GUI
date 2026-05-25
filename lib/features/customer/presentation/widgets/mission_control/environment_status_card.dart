@@ -23,8 +23,9 @@ class EnvironmentStatusCard extends StatelessWidget {
     if (faultType == FaultType.obstacleBlocked) {
       return _SensorStatus('BLOCKED', AppColors.danger, Icons.block_rounded);
     }
-    if (missionState == MissionState.navigatingToUser ||
-        missionState == MissionState.returningToBase) {
+    if (missionState == MissionState.headingToFruit ||
+        missionState == MissionState.headingToCustomer ||
+        missionState == MissionState.returning) {
       return _SensorStatus(
         'Clear Path',
         AppColors.success,
@@ -35,14 +36,15 @@ class EnvironmentStatusCard extends StatelessWidget {
   }
 
   _SensorStatus _pathStatus() {
-    if (missionState == MissionState.navigatingToUser) {
+    if (missionState == MissionState.headingToFruit ||
+        missionState == MissionState.headingToCustomer) {
       return _SensorStatus(
         'A* Routing Active',
         const Color(0xFF42A5F5),
         Icons.route_rounded,
       );
     }
-    if (missionState == MissionState.returningToBase) {
+    if (missionState == MissionState.returning) {
       return _SensorStatus(
         'Return Path',
         const Color(0xFF42A5F5),
@@ -89,8 +91,9 @@ class EnvironmentStatusCard extends StatelessWidget {
         Icons.warning_amber_rounded,
       );
     }
-    if (missionState == MissionState.navigatingToUser ||
-        missionState == MissionState.returningToBase) {
+    if (missionState == MissionState.headingToFruit ||
+        missionState == MissionState.headingToCustomer ||
+        missionState == MissionState.returning) {
       return _SensorStatus(
         '> 2.0 m - Safe',
         AppColors.success,

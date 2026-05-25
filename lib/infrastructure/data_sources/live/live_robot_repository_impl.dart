@@ -104,11 +104,14 @@ class LiveRobotRepositoryImpl implements RobotRepository {
   static MissionState _missionEventToState(String event) {
     const map = {
       'orderReceived': MissionState.missionReceived,
-      'navigatingToItems': MissionState.navigatingToUser,
-      'returningToDropoff': MissionState.arrived,
-      'waitingForRfid': MissionState.awaitingRfid,
-      'rfidVerification': MissionState.rfidVerified,
-      'deliveryComplete': MissionState.deliveryComplete,
+      'headingToFruit': MissionState.headingToFruit,
+      'visionChecking': MissionState.visionChecking,
+      'storing': MissionState.storing,
+      'headingToCustomer': MissionState.headingToCustomer,
+      'rfidAwaiting': MissionState.rfidAwaiting,
+      'storageOpened': MissionState.storageOpened,
+      'storageClosed': MissionState.storageClosed,
+      'returning': MissionState.returning,
       'error': MissionState.failed,
       'idle': MissionState.idle,
     };

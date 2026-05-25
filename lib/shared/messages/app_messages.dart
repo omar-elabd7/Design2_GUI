@@ -24,6 +24,10 @@ const String kMsgOrderCancel = 'order.cancel';
 const String kMsgMissionStart = 'mission.start';
 const String kMsgMissionStop = 'mission.stop';
 
+// ── SEND: Storage ────────────────────────────────────────────────────────────
+/// Sent when customer taps "I took my order" — triggers storageClosed state.
+const String kMsgStorageCloseRequest = 'storage.close_request';
+
 // ── SEND: Session ────────────────────────────────────────────────────────────
 /// Sent immediately after a successful login so the backend/robot knows
 /// which user is now active (id, name, role, rfid, credits, token).
