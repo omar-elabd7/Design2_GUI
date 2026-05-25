@@ -2,16 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/models/order.dart';
 import '../../../../shared/dto/create_order_request_dto.dart';
 import '../../../../infrastructure/dependency_injection/providers.dart';
-import '../../../../infrastructure/repositories/order_repository_impl.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import 'cart_provider.dart';
 
 class CheckoutState {
-  const CheckoutState({
-    this.isLoading = false,
-    this.order,
-    this.error,
-  });
+  const CheckoutState({this.isLoading = false, this.order, this.error});
 
   final bool isLoading;
   final Order? order;
@@ -47,14 +42,12 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     state = state.copyWith(isLoading: true, clearError: true);
 
     try {
-      final orderRepo = _ref.read(orderRepositoryProvider) as OrderRepositoryImpl;
-      orderRepo.cacheUserCredits(user.id, user.credits);
+      final orderRepo = _ref.read(orderRepositoryProvider);
 
       final items = cart
-          .map((e) => CartItemDto(
-                productId: e.product.id,
-                quantity: e.quantity,
-              ))
+          .map(
+            (e) => CartItemDto(productId: e.product.id, quantity: e.quantity),
+          )
           .toList();
 
       final response = await orderRepo.createOrder(
@@ -65,7 +58,9 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         ),
       );
 
-      _ref.read(authStateProvider.notifier).updateCredits(response.remainingCredits);
+      _ref
+          .read(authStateProvider.notifier)
+          .updateCredits(response.remainingCredits);
       _ref.read(cartProvider.notifier).clearCart();
 
       final robotRepo = _ref.read(robotRepositoryProvider);
@@ -94,5 +89,5 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 
 final checkoutProvider =
     StateNotifierProvider.autoDispose<CheckoutNotifier, CheckoutState>((ref) {
-  return CheckoutNotifier(ref);
-});
+      return CheckoutNotifier(ref);
+    });

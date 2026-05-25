@@ -89,7 +89,8 @@ class MockAuthDataSource {
     _sessionUser = user;
     return LoginResponseDto(
       user: user,
-      sessionToken: 'mock_token_${user.id}_${DateTime.now().millisecondsSinceEpoch}',
+      sessionToken:
+          'mock_token_${user.id}_${DateTime.now().millisecondsSinceEpoch}',
     );
   }
 

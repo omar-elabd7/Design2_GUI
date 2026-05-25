@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/models/app_user.dart';
 import '../../../../shared/dto/login_request_dto.dart';
 import '../../../../infrastructure/dependency_injection/providers.dart';
+import '../../../../core/constants/api_constants.dart';
 import '../../../../core/services/logger_service.dart';
 
 class AuthState {
@@ -49,10 +50,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
         LoginRequestDto(username: username, password: password),
       );
       final orderRepo = _ref.read(orderRepositoryProvider);
-      (orderRepo as dynamic).cacheUserCredits(
-        response.user.id,
-        response.user.credits,
-      );
+      // In mock mode only — cache credits locally so the order repository
+      // can deduct them client-side. In live mode the server manages credits.
+      if (!kUseLiveBackend) {
+        (orderRepo as dynamic).cacheUserCredits(
+          response.user.id,
+          response.user.credits,
+        );
+      }
       state = state.copyWith(
         user: response.user,
         sessionToken: response.sessionToken,
@@ -86,7 +91,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 }
 
-final authStateProvider =
-    StateNotifierProvider<AuthNotifier, AuthState>((ref) {
+final authStateProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier(ref);
 });

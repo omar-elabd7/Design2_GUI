@@ -56,7 +56,7 @@ class AppUser extends Equatable {
     return AppUser(
       id: map['id'] as String,
       username: map['username'] as String,
-      passwordHash: map['password_hash'] as String,
+      passwordHash: map['password_hash'] as String? ?? '',
       name: map['name'] as String,
       role: UserRole.values.byName(map['role'] as String),
       rfidCardId: map['rfid_card_id'] as String,

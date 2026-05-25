@@ -1,5 +1,16 @@
-const String kBaseUrl = 'http://192.168.1.100:8000';
-const String kWebSocketUrl = 'ws://192.168.1.100:8000/ws';
+// ─── Backend Mode ─────────────────────────────────────────────────────────────
+/// true  = talk to sim_server.py on localhost (testing)
+/// false = talk to real Pi backend on Wi-Fi
+const bool kUseLiveBackend = true;
+
+// ─── URLs (auto-selected by flag above) ───────────────────────────────────────
+const String _kSimBase = 'http://localhost:8000';
+const String _kPiBase = 'http://192.168.1.100:8000';
+
+const String kBaseUrl = kUseLiveBackend ? _kSimBase : _kPiBase;
+const String kWebSocketUrl = kUseLiveBackend
+    ? 'ws://localhost:8000/ws'
+    : 'ws://192.168.1.100:8000/ws';
 
 const String kLoginEndpoint = '/auth/login';
 const String kProductsEndpoint = '/products';
