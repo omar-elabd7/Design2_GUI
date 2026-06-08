@@ -1,13 +1,5 @@
 #!/usr/bin/env python3
 """
-sim_server.py — Pluto Robot Simulation Server
-==============================================
-Simulates the full Laptop Python Backend for Flutter GUI testing.
-
-Usage:
-    pip install -r requirements.txt
-    python sim_server.py
-
 Endpoints:
     GET  /                 → Dashboard HTML
     GET  /products         → Product list (JSON)
@@ -32,7 +24,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Requ
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 
-# ─── App Setup ────────────────────────────────────────────────────────────────
+# App Setup
 
 app = FastAPI(title="Pluto Robot Sim Server", version="1.0.0")
 
@@ -43,7 +35,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ─── Helpers ──────────────────────────────────────────────────────────────────
+# Helpers 
 
 def _sha256(s: str) -> str:
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
@@ -54,15 +46,12 @@ def _now() -> str:
 def _uid() -> str:
     return uuid.uuid4().hex[:8]
 
-# ─── Users  (mirrors MockAuthDataSource) ──────────────────────────────────────
+# Users  (mirrors MockAuthDataSource) 
 
 _USERS_RAW = [
-    ("user_001", "ahmed_hassan", "1234",      "Ahmed Hassan",  "customer", "RFID_A1B2C3", 150.0),
-    ("user_002", "sara",         "5678",      "Sara Mohamed",  "customer", "RFID_D4E5F6",  75.5),
-    ("user_003", "worker1",      "worker123", "Khaled Ibrahim","worker",   "RFID_W0K0R1",   0.0),
-    ("user_004", "ali",          "pass123",   "Ali Mahmoud",   "customer", "RFID_G7H8I9", 300.0),
-    ("user_005", "shady",        "12345678",  "Shady",         "customer", "RFID_SH4DY7",1000.0),
-    ("user_006", "omar",         "12345678",  "Omar",          "customer", "RFID_OM4R99", 500.0),
+    ("user_001", "omar",   "12345678", "Omar",  "customer", "RFID_OM4R99", 500.0),
+    ("user_002", "shady",  "12345678", "Shady", "customer", "RFID_SH4DY7", 500.0),
+    ("user_003", "kaboo",  "12345678", "Kaboo", "worker",   "RFID_K4B0099",  0.0),
 ]
 
 USERS: dict[str, dict] = {
@@ -78,22 +67,17 @@ user_credits: dict[str, float] = {u: USERS[u]["credits"] for u in USERS}
 # Map rfid_card_id → username for RFID verification
 rfid_to_user: dict[str, str] = {USERS[u]["rfid_card_id"]: u for u in USERS}
 
-# ─── Products  (mirrors MockProductDataSource) ────────────────────────────────
+# Products  (mirrors MockProductDataSource) 
 
 PRODUCTS: list[dict] = [
-    {"id": "prod_001", "name": "Apple",      "price": 5.0,  "stock": 20, "image_url": "", "unit": "kg",    "category": "Classic",  "description": "Crisp & Juicy",     "emoji": "🍎"},
-    {"id": "prod_002", "name": "Banana",     "price": 3.0,  "stock": 15, "image_url": "", "unit": "kg",    "category": "Tropical", "description": "Sweet & Creamy",    "emoji": "🍌"},
-    {"id": "prod_003", "name": "Orange",     "price": 4.5,  "stock": 10, "image_url": "", "unit": "kg",    "category": "Citrus",   "description": "Sweet & Fresh",     "emoji": "🍊"},
-    {"id": "prod_004", "name": "Mango",      "price": 8.0,  "stock": 8,  "image_url": "", "unit": "kg",    "category": "Tropical", "description": "Rich & Fragrant",   "emoji": "🥭"},
-    {"id": "prod_005", "name": "Grapes",     "price": 12.0, "stock": 5,  "image_url": "", "unit": "kg",    "category": "Berries",  "description": "Plump & Sweet",     "emoji": "🍇"},
-    {"id": "prod_006", "name": "Strawberry", "price": 15.0, "stock": 12, "image_url": "", "unit": "kg",    "category": "Berries",  "description": "Fresh & Sweet",     "emoji": "🍓"},
-    {"id": "prod_007", "name": "Watermelon", "price": 10.0, "stock": 3,  "image_url": "", "unit": "piece", "category": "Classic",  "description": "Cool & Refreshing", "emoji": "🍉"},
-    {"id": "prod_008", "name": "Pineapple",  "price": 7.0,  "stock": 6,  "image_url": "", "unit": "piece", "category": "Tropical", "description": "Tangy & Sweet",     "emoji": "🍍"},
+    {"id": "prod_001", "name": "Apple",  "price": 5.0, "stock": 20, "image_url": "", "unit": "kg", "category": "Classic", "description": "Crisp & Juicy",  "emoji": "🍎"},
+    {"id": "prod_002", "name": "Orange", "price": 4.5, "stock": 20, "image_url": "", "unit": "kg", "category": "Citrus",  "description": "Sweet & Fresh",  "emoji": "🍊"},
+    {"id": "prod_003", "name": "Kiwi",   "price": 6.0, "stock": 20, "image_url": "", "unit": "kg", "category": "Tropical","description": "Tangy & Sweet", "emoji": "🥝"},
 ]
 
 product_stock: dict[str, int] = {p["id"]: p["stock"] for p in PRODUCTS}
 
-# ─── Robot State ──────────────────────────────────────────────────────────────
+# Robot State
 
 class RobotState:
     def __init__(self):
@@ -159,13 +143,13 @@ class RobotState:
 robot = RobotState()
 mission_task: Optional[asyncio.Task] = None
 
-# ─── Connection Management ────────────────────────────────────────────────────
+# Connection Management 
 
 flutter_clients: set[WebSocket] = set()
 dashboard_clients: set[WebSocket] = set()
 message_log: list[dict] = []   # rolling 200-entry log
 
-# ─── Broadcast Helpers ────────────────────────────────────────────────────────
+#  Broadcast Helpers 
 
 async def _send_safe(ws: WebSocket, text: str) -> bool:
     """Try to send to a client. Returns False if dead."""
@@ -203,7 +187,7 @@ def _log(entry: dict):
     if len(message_log) > 200:
         message_log.pop(0)
 
-# ─── Mission State Machine ────────────────────────────────────────────────────
+# Mission State Machine
 
 async def _navigate(total_seconds: float, start_distance: float, order_id: str):
     """
@@ -289,7 +273,7 @@ async def run_mission(order_id: str, items: list):
     robot.paused = False
 
     try:
-        # ── 1. Mission Received ────────────────────────────────────────────────
+        #  1. Mission Received 
         robot.mission_state = "missionReceived"
         await _emit_event(order_id, "orderReceived", "Mission received! Processing order...", 5)
         # Hold missionReceived long enough for Flutter to navigate to the
@@ -299,7 +283,7 @@ async def run_mission(order_id: str, items: list):
             await asyncio.sleep(1.0)
             await broadcast(robot.status_msg())
 
-        # ── 2. Heading to Fruit ───────────────────────────────────────────────
+        #  2. Heading to Fruit 
         robot.mission_state = "headingToFruit"
         robot.linear_speed = 0.25
         robot.distance_remaining = 4.0
@@ -308,7 +292,7 @@ async def run_mission(order_id: str, items: list):
         robot.linear_speed = 0.0
         robot.distance_remaining = 0.0
 
-        # ── 3. Vision Checking ────────────────────────────────────────────────
+        #  3. Vision Checking 
         robot.mission_state = "visionChecking"
         await _emit_event(order_id, "visionChecking", "Vision module checking stock availability...", 30)
         await broadcast({
@@ -321,7 +305,7 @@ async def run_mission(order_id: str, items: list):
         })
         await asyncio.sleep(3.0)
 
-        # ── 4. Storing ────────────────────────────────────────────────────────
+        #  4. Storing 
         robot.mission_state = "storing"
         robot.storage_state = "opening"
         await _emit_event(order_id, "storing", f"Collecting {fruit_name} into storage box...", 45)
@@ -334,7 +318,7 @@ async def run_mission(order_id: str, items: list):
         await asyncio.sleep(3.5)
         robot.storage_state = "closed"
 
-        # ── 5. Heading to Customer ────────────────────────────────────────────
+        #  5. Heading to Customer 
         robot.mission_state = "headingToCustomer"
         robot.linear_speed = 0.25
         robot.distance_remaining = 4.8
@@ -343,7 +327,7 @@ async def run_mission(order_id: str, items: list):
         robot.linear_speed = 0.0
         robot.distance_remaining = 0.0
 
-        # ── 6. RFID Awaiting ──────────────────────────────────────────────────
+        #  6. RFID Awaiting 
         robot.mission_state = "rfidAwaiting"
         robot.rfid_event = asyncio.Event()
         robot.rfid_success = False
@@ -383,7 +367,7 @@ async def run_mission(order_id: str, items: list):
             await _end_mission(order_id)
             return
 
-        # ── 7. Storage Opened ─────────────────────────────────────────────────
+        #  7. Storage Opened 
         robot.mission_state = "storageOpened"
         robot.fault_type = "none"
         robot.storage_state = "open"
@@ -416,7 +400,7 @@ async def run_mission(order_id: str, items: list):
         except asyncio.TimeoutError:
             pass  # auto-close after timeout
 
-        # ── 8. Storage Closed ─────────────────────────────────────────────────
+        # 8. Storage Closed 
         robot.mission_state = "storageClosed"
         robot.storage_state = "closing"
         await broadcast({
@@ -429,7 +413,7 @@ async def run_mission(order_id: str, items: list):
         await asyncio.sleep(2.5)
         robot.storage_state = "closed"
 
-        # ── 9. Returning ──────────────────────────────────────────────────────
+        # 9. Returning 
         robot.mission_state = "returning"
         robot.linear_speed = 0.18
         await _emit_event(order_id, "returning", "Robot returning to home position.", 95)
@@ -461,7 +445,7 @@ async def _end_mission(order_id: str):
         "timestamp": _now(),
     })
 
-# ─── Background Tasks ─────────────────────────────────────────────────────────
+# Background Tasks 
 
 async def battery_drain_task():
     """Drain 1% battery every 30 s. Broadcast telemetry.battery on each drain."""
@@ -505,7 +489,7 @@ async def health_heartbeat_task():
                 "timestamp": _now(),
             })
 
-# ─── Incoming Message Handler ─────────────────────────────────────────────────
+# Incoming Message Handler 
 
 async def handle_incoming(msg: dict, source: str = "flutter"):
     """
@@ -521,7 +505,7 @@ async def handle_incoming(msg: dict, source: str = "flutter"):
     _log(entry)
     await _push_log_to_dashboard(entry)
 
-    # ── Mission / Order ──────────────────────────────────────────────────────
+    # Mission / Order 
 
     if msg_type == "order.place":
         order_id = f"ord_{_uid()}"
@@ -548,7 +532,7 @@ async def handle_incoming(msg: dict, source: str = "flutter"):
         _cancel_mission()
         mission_task = asyncio.create_task(run_mission(order_id, []))
 
-    # ── RFID / Payment ────────────────────────────────────────────────────────
+    # RFID / Payment 
 
     elif msg_type == "rfid.verification":
         rfid_id = msg.get("rfid_card_id", "")
@@ -566,7 +550,7 @@ async def handle_incoming(msg: dict, source: str = "flutter"):
         # Simulate instant approval
         asyncio.create_task(_approve_payment(msg.get("order_id", ""), msg.get("amount", 0.0)))
 
-    # ── Session ───────────────────────────────────────────────────────────────
+    # Session
 
     elif msg_type == "user.session":
         is_logout = msg.get("is_logout", False)
@@ -616,7 +600,7 @@ async def handle_incoming(msg: dict, source: str = "flutter"):
             "active": active,
         })
 
-    # ── Debug Controls ────────────────────────────────────────────────────────
+    # Debug Controls 
 
     elif msg_type == "debug.obstacle_inject":
         robot.paused = True
@@ -700,7 +684,7 @@ async def _approve_payment(order_id: str, amount: float):
         "timestamp": _now(),
     })
 
-# ─── WebSocket Endpoints ──────────────────────────────────────────────────────
+# WebSocket Endpoints 
 
 @app.websocket("/ws")
 async def flutter_ws(websocket: WebSocket):
@@ -759,7 +743,7 @@ async def dashboard_ws_handler(websocket: WebSocket):
     except WebSocketDisconnect:
         dashboard_clients.discard(websocket)
 
-# ─── HTTP Endpoints ───────────────────────────────────────────────────────────
+# HTTP Endpoints 
 
 @app.post("/auth/login")
 async def login(request: Request):
@@ -906,7 +890,7 @@ async def dashboard():
     except FileNotFoundError:
         return HTMLResponse("<h1>sim_dashboard.html not found in sim_server/ directory</h1>", status_code=404)
 
-# ─── Startup ──────────────────────────────────────────────────────────────────
+# Startup 
 
 @app.on_event("startup")
 async def startup():
@@ -920,7 +904,7 @@ async def startup():
     print("  Flutter API: http://localhost:8000")
     print("=" * 52)
 
-# ─── Entry Point ──────────────────────────────────────────────────────────────
+# Entry Point
 
 if __name__ == "__main__":
     uvicorn.run("sim_server:app", host="0.0.0.0", port=8000, reload=False, log_level="info")
