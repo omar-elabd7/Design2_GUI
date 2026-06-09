@@ -277,11 +277,6 @@ class _Sidebar extends ConsumerWidget {
       route: RouteNames.workerDashboard,
     ),
     _NavDef(
-      icon: Icons.gamepad_rounded,
-      label: 'Control',
-      route: RouteNames.workerControl,
-    ),
-    _NavDef(
       icon: Icons.bug_report_rounded,
       label: 'Debug',
       route: RouteNames.debug,

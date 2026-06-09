@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../core/utils/helpers.dart';
 import '../../../../shared/models/enums.dart';
+import '../../../../shared/models/mission_update.dart';
+import '../../../robot_status/presentation/providers/mission_stream_provider.dart';
 import '../../../robot_status/presentation/providers/robot_status_provider.dart';
 import '../providers/teleop_provider.dart';
 import '../providers/worker_control_provider.dart';
@@ -84,6 +87,8 @@ class _WorkerDashboardScreenState extends ConsumerState<WorkerDashboardScreen>
                       _ManualControlCard(pulseCtrl: _pulseCtrl),
                       const SizedBox(height: 12),
                       _StorageCard(),
+                      const SizedBox(height: 12),
+                      const _EventLogCard(),
                     ],
                   ),
                 ),
@@ -1047,6 +1052,194 @@ class _ActivityItem {
   final String label;
   final Color color;
   final String time;
+}
+
+// =============================================================================
+//  Event Log Card
+// =============================================================================
+
+class _EventLogCard extends ConsumerStatefulWidget {
+  const _EventLogCard();
+
+  @override
+  ConsumerState<_EventLogCard> createState() => _EventLogCardState();
+}
+
+class _EventLogCardState extends ConsumerState<_EventLogCard> {
+  final ScrollController _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final updates = ref.watch(missionUpdatesProvider).asData?.value ?? const [];
+
+    // Auto-scroll to bottom when new events arrive
+    ref.listen(missionUpdatesProvider, (_, next) {
+      final list = next.asData?.value;
+      if (list != null && list.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scroll.hasClients) {
+            _scroll.animateTo(
+              _scroll.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        });
+      }
+    });
+
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── header ────────────────────────────────────────────────────────
+          Row(
+            children: [
+              const Icon(Icons.terminal_rounded, color: _kGreen, size: 18),
+              const SizedBox(width: 8),
+              const Text('Robot Event Log', style: AppTextStyles.headlineSmall),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: _kGreen.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: _kGreen.withValues(alpha: 0.3)),
+                ),
+                child: Text(
+                  '${updates.length}',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: _kGreen,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // ── log list ──────────────────────────────────────────────────────
+          SizedBox(
+            height: 200,
+            child: updates.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.receipt_long_outlined,
+                          size: 28,
+                          color: AppColors.textMuted.withValues(alpha: 0.5),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Waiting for robot events...',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    controller: _scroll,
+                    itemCount: updates.length,
+                    padding: EdgeInsets.zero,
+                    itemBuilder: (_, i) => _LogRow(update: updates[i]),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── single log row ───────────────────────────────────────────────────────────
+
+class _LogRow extends StatelessWidget {
+  const _LogRow({required this.update});
+  final MissionUpdate update;
+
+  Color _dotColor() {
+    if (update.faultType != null && update.faultType != FaultType.none) {
+      return AppColors.danger;
+    }
+    switch (update.state) {
+      case MissionState.storageClosed:
+      case MissionState.storageOpened:
+        return _kGreen;
+      case MissionState.headingToFruit:
+      case MissionState.headingToCustomer:
+      case MissionState.returning:
+        return const Color(0xFF42A5F5);
+      case MissionState.rfidAwaiting:
+      case MissionState.visionChecking:
+        return AppColors.warning;
+      case MissionState.failed:
+        return AppColors.danger;
+      default:
+        return AppColors.textSecondary;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final time = DateFormat('HH:mm:ss').format(update.timestamp);
+    final color = _dotColor();
+    final isFault =
+        update.faultType != null && update.faultType != FaultType.none;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 7),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // timestamp
+          Text(
+            time,
+            style: const TextStyle(
+              fontSize: 10,
+              fontFamily: 'monospace',
+              color: AppColors.textMuted,
+            ),
+          ),
+          const SizedBox(width: 8),
+          // dot
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: color,
+                boxShadow: [
+                  BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 5),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 7),
+          // message
+          Expanded(
+            child: Text(
+              update.message,
+              style: TextStyle(
+                fontSize: 11,
+                color: isFault ? AppColors.danger : AppColors.textPrimary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // =============================================================================
