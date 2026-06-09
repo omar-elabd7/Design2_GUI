@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import '../../../../core/routing/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../core/utils/helpers.dart';
 import '../../../../shared/models/enums.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../robot_status/presentation/providers/robot_status_provider.dart';
 import '../providers/teleop_provider.dart';
 import '../providers/worker_control_provider.dart';
@@ -59,9 +56,6 @@ class _WorkerDashboardScreenState extends ConsumerState<WorkerDashboardScreen>
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(authStateProvider).user;
-    final status = ref.watch(robotStatusProvider);
-
     return Scaffold(
       backgroundColor: _kBg,
       body: Stack(
@@ -77,53 +71,40 @@ class _WorkerDashboardScreenState extends ConsumerState<WorkerDashboardScreen>
           ),
 
           // ── content ──────────────────────────────────────────────────────
-          Column(
-            children: [
-              // top bar
-              _TopBar(
-                workerName: user?.name ?? 'Worker',
-                isConnected: status.isConnected,
-                pulseCtrl: _pulseCtrl,
-              ),
-              // body
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── LEFT ──────────────────────────────────────────────
+                Expanded(
+                  flex: 55,
+                  child: Column(
                     children: [
-                      // ── LEFT ──────────────────────────────────────────────
-                      Expanded(
-                        flex: 55,
-                        child: Column(
-                          children: [
-                            _ManualControlCard(pulseCtrl: _pulseCtrl),
-                            const SizedBox(height: 12),
-                            _StorageCard(),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      // ── RIGHT ─────────────────────────────────────────────
-                      Expanded(
-                        flex: 45,
-                        child: Column(
-                          children: [
-                            _RobotStatusCard(pulseCtrl: _pulseCtrl),
-                            const SizedBox(height: 12),
-                            _BatteryCard(),
-                            const SizedBox(height: 12),
-                            _RobotModeCard(),
-                            const SizedBox(height: 12),
-                            const _RecentActivityCard(),
-                          ],
-                        ),
-                      ),
+                      _ManualControlCard(pulseCtrl: _pulseCtrl),
+                      const SizedBox(height: 12),
+                      _StorageCard(),
                     ],
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 12),
+                // ── RIGHT ─────────────────────────────────────────────
+                Expanded(
+                  flex: 45,
+                  child: Column(
+                    children: [
+                      _RobotStatusCard(pulseCtrl: _pulseCtrl),
+                      const SizedBox(height: 12),
+                      _BatteryCard(),
+                      const SizedBox(height: 12),
+                      _RobotModeCard(),
+                      const SizedBox(height: 12),
+                      const _RecentActivityCard(),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -204,144 +185,6 @@ class _WorkerGridPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_WorkerGridPainter old) => old.phase != phase;
-}
-
-// =============================================================================
-//  Top bar
-// =============================================================================
-
-class _TopBar extends ConsumerWidget {
-  const _TopBar({
-    required this.workerName,
-    required this.isConnected,
-    required this.pulseCtrl,
-  });
-  final String workerName;
-  final bool isConnected;
-  final AnimationController pulseCtrl;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0B1520).withValues(alpha: 0.95),
-        border: const Border(
-          bottom: BorderSide(color: _kCardBorderGreen, width: 1),
-        ),
-      ),
-      child: Row(
-        children: [
-          // logo + title
-          const Icon(
-            Icons.precision_manufacturing_rounded,
-            color: _kGreen,
-            size: 22,
-          ),
-          const SizedBox(width: 10),
-          RichText(
-            text: TextSpan(
-              children: [
-                TextSpan(
-                  text: 'Pluto',
-                  style: AppTextStyles.titleMedium.copyWith(
-                    color: _kGreen,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                TextSpan(
-                  text: '  ·  Worker Panel',
-                  style: AppTextStyles.titleMedium.copyWith(
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const Spacer(),
-
-          // connection chip
-          AnimatedBuilder(
-            animation: pulseCtrl,
-            builder: (_, __) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-              decoration: BoxDecoration(
-                color: isConnected
-                    ? _kGreen.withValues(alpha: 0.08 + pulseCtrl.value * 0.05)
-                    : AppColors.danger.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isConnected
-                      ? _kGreen.withValues(alpha: 0.4)
-                      : AppColors.danger.withValues(alpha: 0.4),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isConnected ? _kGreen : AppColors.danger,
-                    ),
-                  ),
-                  const SizedBox(width: 7),
-                  Text(
-                    isConnected ? 'PLUTO IS CONNECTED' : 'DISCONNECTED',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: isConnected ? _kGreen : AppColors.danger,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(width: 16),
-
-          // user name
-          const Icon(
-            Icons.person_outline,
-            color: AppColors.textSecondary,
-            size: 16,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            workerName,
-            style: AppTextStyles.bodySmall.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(width: 4),
-
-          // logout
-          IconButton(
-            icon: const Icon(
-              Icons.logout_rounded,
-              color: AppColors.textSecondary,
-              size: 18,
-            ),
-            tooltip: 'Logout',
-            onPressed: () {
-              ref.read(authStateProvider.notifier).logout();
-              context.go(
-                '${RouteNames.transitionSplash}?next=${RouteNames.login}&subtitle=Signing out...',
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // =============================================================================
