@@ -83,12 +83,13 @@ class _WorkerDashboardScreenState extends ConsumerState<WorkerDashboardScreen>
                 Expanded(
                   flex: 55,
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       _ManualControlCard(pulseCtrl: _pulseCtrl),
                       const SizedBox(height: 12),
                       _StorageCard(),
                       const SizedBox(height: 12),
-                      const _EventLogCard(),
+                      Expanded(child: const _EventLogCard()),
                     ],
                   ),
                 ),
@@ -1125,8 +1126,7 @@ class _EventLogCardState extends ConsumerState<_EventLogCard> {
           ),
           const SizedBox(height: 10),
           // ── log list ──────────────────────────────────────────────────────
-          SizedBox(
-            height: 200,
+          Expanded(
             child: updates.isEmpty
                 ? Center(
                     child: Column(
