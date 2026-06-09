@@ -1,59 +1,569 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/constants/app_constants.dart';
 import '../../../../core/routing/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/widgets/app_scaffold.dart';
+import '../../../../core/utils/extensions.dart';
+import '../../../../core/utils/helpers.dart';
+import '../../../../shared/models/enums.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
-import '../widgets/teleop_panel.dart';
-import '../widgets/storage_control_panel.dart';
-import '../widgets/robot_mode_panel.dart';
-import '../widgets/battery_status_card.dart';
-import '../widgets/worker_status_panel.dart';
+import '../../../robot_status/presentation/providers/robot_status_provider.dart';
+import '../providers/teleop_provider.dart';
+import '../providers/worker_control_provider.dart';
 
-class WorkerDashboardScreen extends ConsumerWidget {
+// ─── palette ──────────────────────────────────────────────────────────────────
+const _kGreen = Color(0xFF2ECC8E);
+const _kBg = Color(0xFF0A0F1A);
+const _kCard = Color(0xFF0F1825);
+const _kCardBorder = Color(0xFF1A2A3A);
+const _kCardBorderGreen = Color(0xFF1A3A2A);
+
+// =============================================================================
+//  WorkerDashboardScreen
+// =============================================================================
+
+class WorkerDashboardScreen extends ConsumerStatefulWidget {
   const WorkerDashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authStateProvider);
-    final user = authState.user;
+  ConsumerState<WorkerDashboardScreen> createState() =>
+      _WorkerDashboardScreenState();
+}
 
-    return AppScaffold(
-      topBar: _WorkerTopBar(workerName: user?.name ?? 'Worker'),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(kDefaultPadding),
-        child: Column(
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 5,
-                  child: Column(
+class _WorkerDashboardScreenState extends ConsumerState<WorkerDashboardScreen>
+    with TickerProviderStateMixin {
+  late AnimationController _bgCtrl;
+  late AnimationController _pulseCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _bgCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 8),
+    )..repeat();
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _bgCtrl.dispose();
+    _pulseCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = ref.watch(authStateProvider).user;
+    final status = ref.watch(robotStatusProvider);
+
+    return Scaffold(
+      backgroundColor: _kBg,
+      body: Stack(
+        children: [
+          // ── animated background ──────────────────────────────────────────
+          Positioned.fill(
+            child: AnimatedBuilder(
+              animation: _bgCtrl,
+              builder: (_, __) => CustomPaint(
+                painter: _WorkerGridPainter(phase: _bgCtrl.value),
+              ),
+            ),
+          ),
+
+          // ── content ──────────────────────────────────────────────────────
+          Column(
+            children: [
+              // top bar
+              _TopBar(
+                workerName: user?.name ?? 'Worker',
+                isConnected: status.isConnected,
+                pulseCtrl: _pulseCtrl,
+              ),
+              // body
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const TeleopPanel(),
-                      const SizedBox(height: kDefaultPadding),
-                      const StorageControlPanel(),
+                      // ── LEFT ──────────────────────────────────────────────
+                      Expanded(
+                        flex: 55,
+                        child: Column(
+                          children: [
+                            _ManualControlCard(pulseCtrl: _pulseCtrl),
+                            const SizedBox(height: 12),
+                            _StorageCard(),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // ── RIGHT ─────────────────────────────────────────────
+                      Expanded(
+                        flex: 45,
+                        child: Column(
+                          children: [
+                            _RobotStatusCard(pulseCtrl: _pulseCtrl),
+                            const SizedBox(height: 12),
+                            _BatteryCard(),
+                            const SizedBox(height: 12),
+                            _RobotModeCard(),
+                            const SizedBox(height: 12),
+                            const _RecentActivityCard(),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                const SizedBox(width: kDefaultPadding),
-                Expanded(
-                  flex: 4,
-                  child: Column(
-                    children: [
-                      const WorkerStatusPanel(),
-                      const SizedBox(height: kDefaultPadding),
-                      const BatteryStatusCard(),
-                      const SizedBox(height: kDefaultPadding),
-                      const RobotModePanel(),
-                    ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =============================================================================
+//  Animated background painter
+// =============================================================================
+
+class _WorkerGridPainter extends CustomPainter {
+  _WorkerGridPainter({required this.phase});
+  final double phase;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const step = 52.0;
+
+    // grid lines
+    final linePaint = Paint()
+      ..color = const Color(0xFF0E2A1A).withValues(alpha: 0.7)
+      ..strokeWidth = 0.6;
+    for (double x = 0; x < size.width; x += step) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), linePaint);
+    }
+    for (double y = 0; y < size.height; y += step) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), linePaint);
+    }
+
+    // junction dots
+    final dotPaint = Paint()..color = _kGreen.withValues(alpha: 0.07);
+    for (double x = 0; x < size.width; x += step) {
+      for (double y = 0; y < size.height; y += step) {
+        canvas.drawCircle(Offset(x, y), 1.4, dotPaint);
+      }
+    }
+
+    // horizontal sweep glow
+    final sweepX = phase * (size.width + 240) - 120;
+    final glowH = Paint()
+      ..shader = LinearGradient(
+        colors: [
+          Colors.transparent,
+          _kGreen.withValues(alpha: 0.055),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromLTWH(sweepX - 120, 0, 240, size.height));
+    canvas.drawRect(Rect.fromLTWH(sweepX - 120, 0, 240, size.height), glowH);
+
+    // vertical drift glow
+    final sweepY = ((phase * 1.4) % 1.0) * (size.height + 180) - 90;
+    final glowV = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Colors.transparent,
+          _kGreen.withValues(alpha: 0.03),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromLTWH(0, sweepY - 90, size.width, 180));
+    canvas.drawRect(Rect.fromLTWH(0, sweepY - 90, size.width, 180), glowV);
+
+    // corner radiant glow (bottom-left)
+    final rPaint = Paint()
+      ..shader =
+          RadialGradient(
+            colors: [_kGreen.withValues(alpha: 0.06), Colors.transparent],
+          ).createShader(
+            Rect.fromCircle(
+              center: Offset(0, size.height),
+              radius: size.height * 0.55,
+            ),
+          );
+    canvas.drawRect(Offset.zero & size, rPaint);
+  }
+
+  @override
+  bool shouldRepaint(_WorkerGridPainter old) => old.phase != phase;
+}
+
+// =============================================================================
+//  Top bar
+// =============================================================================
+
+class _TopBar extends ConsumerWidget {
+  const _TopBar({
+    required this.workerName,
+    required this.isConnected,
+    required this.pulseCtrl,
+  });
+  final String workerName;
+  final bool isConnected;
+  final AnimationController pulseCtrl;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0B1520).withValues(alpha: 0.95),
+        border: const Border(
+          bottom: BorderSide(color: _kCardBorderGreen, width: 1),
+        ),
+      ),
+      child: Row(
+        children: [
+          // logo + title
+          const Icon(
+            Icons.precision_manufacturing_rounded,
+            color: _kGreen,
+            size: 22,
+          ),
+          const SizedBox(width: 10),
+          RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: 'Pluto',
+                  style: AppTextStyles.titleMedium.copyWith(
+                    color: _kGreen,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                TextSpan(
+                  text: '  ·  Worker Panel',
+                  style: AppTextStyles.titleMedium.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
               ],
+            ),
+          ),
+
+          const Spacer(),
+
+          // connection chip
+          AnimatedBuilder(
+            animation: pulseCtrl,
+            builder: (_, __) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                color: isConnected
+                    ? _kGreen.withValues(alpha: 0.08 + pulseCtrl.value * 0.05)
+                    : AppColors.danger.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isConnected
+                      ? _kGreen.withValues(alpha: 0.4)
+                      : AppColors.danger.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isConnected ? _kGreen : AppColors.danger,
+                    ),
+                  ),
+                  const SizedBox(width: 7),
+                  Text(
+                    isConnected ? 'PLUTO IS CONNECTED' : 'DISCONNECTED',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: isConnected ? _kGreen : AppColors.danger,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 16),
+
+          // user name
+          const Icon(
+            Icons.person_outline,
+            color: AppColors.textSecondary,
+            size: 16,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            workerName,
+            style: AppTextStyles.bodySmall.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(width: 4),
+
+          // logout
+          IconButton(
+            icon: const Icon(
+              Icons.logout_rounded,
+              color: AppColors.textSecondary,
+              size: 18,
+            ),
+            tooltip: 'Logout',
+            onPressed: () {
+              ref.read(authStateProvider.notifier).logout();
+              context.go(
+                '${RouteNames.transitionSplash}?next=${RouteNames.login}&subtitle=Signing out...',
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =============================================================================
+//  Manual Control Card
+// =============================================================================
+
+class _ManualControlCard extends ConsumerStatefulWidget {
+  const _ManualControlCard({required this.pulseCtrl});
+  final AnimationController pulseCtrl;
+
+  @override
+  ConsumerState<_ManualControlCard> createState() => _ManualControlCardState();
+}
+
+class _ManualControlCardState extends ConsumerState<_ManualControlCard> {
+  final FocusNode _focus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _focus.requestFocus());
+  }
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  void _down(LogicalKeyboardKey k) {
+    final n = ref.read(teleopProvider.notifier);
+    if (k == LogicalKeyboardKey.keyW || k == LogicalKeyboardKey.arrowUp) {
+      n.startCommand(TeleopDirection.forward);
+    } else if (k == LogicalKeyboardKey.keyS ||
+        k == LogicalKeyboardKey.arrowDown) {
+      n.startCommand(TeleopDirection.backward);
+    } else if (k == LogicalKeyboardKey.keyA ||
+        k == LogicalKeyboardKey.arrowLeft) {
+      n.startCommand(TeleopDirection.left);
+    } else if (k == LogicalKeyboardKey.keyD ||
+        k == LogicalKeyboardKey.arrowRight) {
+      n.startCommand(TeleopDirection.right);
+    }
+  }
+
+  void _up(LogicalKeyboardKey k) {
+    final watched = {
+      LogicalKeyboardKey.keyW,
+      LogicalKeyboardKey.keyS,
+      LogicalKeyboardKey.keyA,
+      LogicalKeyboardKey.keyD,
+      LogicalKeyboardKey.arrowUp,
+      LogicalKeyboardKey.arrowDown,
+      LogicalKeyboardKey.arrowLeft,
+      LogicalKeyboardKey.arrowRight,
+    };
+    if (watched.contains(k)) ref.read(teleopProvider.notifier).stopCommand();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dir = ref.watch(teleopProvider);
+
+    return _Card(
+      child: GestureDetector(
+        onTap: () => _focus.requestFocus(),
+        child: KeyboardListener(
+          focusNode: _focus,
+          onKeyEvent: (e) {
+            if (e is KeyDownEvent) _down(e.logicalKey);
+            if (e is KeyUpEvent) _up(e.logicalKey);
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // header
+              Row(
+                children: [
+                  const Icon(Icons.gamepad_rounded, color: _kGreen, size: 18),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Manual Control',
+                    style: AppTextStyles.headlineSmall,
+                  ),
+                  const Spacer(),
+                  Text(
+                    'W A S D / Arrow Keys',
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              // D-Pad
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _DpadBtn(
+                      icon: Icons.arrow_upward_rounded,
+                      label: 'W',
+                      active: dir == TeleopDirection.forward,
+                      onDown: () => ref
+                          .read(teleopProvider.notifier)
+                          .startCommand(TeleopDirection.forward),
+                      onUp: () =>
+                          ref.read(teleopProvider.notifier).stopCommand(),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _DpadBtn(
+                          icon: Icons.arrow_back_rounded,
+                          label: 'A',
+                          active: dir == TeleopDirection.left,
+                          onDown: () => ref
+                              .read(teleopProvider.notifier)
+                              .startCommand(TeleopDirection.left),
+                          onUp: () =>
+                              ref.read(teleopProvider.notifier).stopCommand(),
+                        ),
+                        const SizedBox(width: 8),
+                        _StopBtn(
+                          onPressed: () =>
+                              ref.read(teleopProvider.notifier).stopCommand(),
+                        ),
+                        const SizedBox(width: 8),
+                        _DpadBtn(
+                          icon: Icons.arrow_forward_rounded,
+                          label: 'D',
+                          active: dir == TeleopDirection.right,
+                          onDown: () => ref
+                              .read(teleopProvider.notifier)
+                              .startCommand(TeleopDirection.right),
+                          onUp: () =>
+                              ref.read(teleopProvider.notifier).stopCommand(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    _DpadBtn(
+                      icon: Icons.arrow_downward_rounded,
+                      label: 'S',
+                      active: dir == TeleopDirection.backward,
+                      onDown: () => ref
+                          .read(teleopProvider.notifier)
+                          .startCommand(TeleopDirection.backward),
+                      onUp: () =>
+                          ref.read(teleopProvider.notifier).stopCommand(),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DpadBtn extends StatelessWidget {
+  const _DpadBtn({
+    required this.icon,
+    required this.label,
+    required this.active,
+    required this.onDown,
+    required this.onUp,
+  });
+  final IconData icon;
+  final String label;
+  final bool active;
+  final VoidCallback onDown;
+  final VoidCallback onUp;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => onDown(),
+      onTapUp: (_) => onUp(),
+      onTapCancel: onUp,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 80),
+        width: 68,
+        height: 68,
+        decoration: BoxDecoration(
+          color: active
+              ? _kGreen.withValues(alpha: 0.18)
+              : const Color(0xFF0D1F2D),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: active ? _kGreen : _kCardBorder,
+            width: active ? 1.8 : 1,
+          ),
+          boxShadow: active
+              ? [
+                  BoxShadow(
+                    color: _kGreen.withValues(alpha: 0.25),
+                    blurRadius: 14,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : null,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: active ? _kGreen : AppColors.textSecondary,
+              size: 24,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: active ? _kGreen : AppColors.textMuted,
+              ),
             ),
           ],
         ),
@@ -62,62 +572,764 @@ class WorkerDashboardScreen extends ConsumerWidget {
   }
 }
 
-class _WorkerTopBar extends ConsumerWidget {
-  final String workerName;
-
-  const _WorkerTopBar({required this.workerName});
+class _StopBtn extends StatelessWidget {
+  const _StopBtn({required this.onPressed});
+  final VoidCallback onPressed;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Container(
-      height: kTopBarHeight,
-      padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding),
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceElevated,
-        border: Border(bottom: BorderSide(color: AppColors.cardBorder)),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.precision_manufacturing,
-            color: AppColors.primary,
-            size: 20,
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: 68,
+        height: 68,
+        decoration: BoxDecoration(
+          color: AppColors.danger.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppColors.danger.withValues(alpha: 0.5),
+            width: 1.5,
           ),
-          const SizedBox(width: 10),
-          Text(
-            'Pluto - Worker',
-            style: AppTextStyles.titleMedium.copyWith(
-              color: AppColors.textPrimary,
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.danger.withValues(alpha: 0.15),
+              blurRadius: 12,
             ),
-          ),
-          const Spacer(),
+          ],
+        ),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.stop_rounded, color: AppColors.danger, size: 26),
+            SizedBox(height: 2),
+            Text(
+              'STOP',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+                color: AppColors.danger,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// =============================================================================
+//  Storage Card
+// =============================================================================
+
+class _StorageCard extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final storageAsync = ref.watch(workerStorageStateProvider);
+    final state = storageAsync.asData?.value ?? StorageState.closed;
+    final isOpen = state == StorageState.open;
+    final isTrans =
+        state == StorageState.opening || state == StorageState.closing;
+
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Row(
             children: [
-              const Icon(
-                Icons.person_outline,
-                color: AppColors.textSecondary,
-                size: 16,
+              const Icon(Icons.inventory_2_rounded, color: _kGreen, size: 18),
+              const SizedBox(width: 8),
+              const Text(
+                'Storage Compartment',
+                style: AppTextStyles.headlineSmall,
               ),
-              const SizedBox(width: 6),
-              Text(workerName, style: AppTextStyles.bodySmall),
-              const SizedBox(width: kDefaultPadding),
-              IconButton(
-                icon: const Icon(
-                  Icons.logout,
-                  color: AppColors.textSecondary,
-                  size: 18,
+              const Spacer(),
+              _StateChip(
+                label: state.label,
+                color: isOpen
+                    ? AppColors.warning
+                    : state == StorageState.fault
+                    ? AppColors.danger
+                    : AppColors.textSecondary,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // storage visual
+          Center(
+            child: SizedBox(
+              height: 80,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // glow ring
+                  if (isOpen)
+                    Container(
+                      width: 140,
+                      height: 70,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _kGreen.withValues(alpha: 0.25),
+                            blurRadius: 28,
+                            spreadRadius: 4,
+                          ),
+                        ],
+                      ),
+                    ),
+                  Container(
+                    width: 130,
+                    height: 65,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0B1820),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isOpen
+                            ? _kGreen.withValues(alpha: 0.6)
+                            : _kCardBorder,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Icon(
+                      isOpen ? Icons.lock_open_rounded : Icons.lock_rounded,
+                      color: isOpen ? _kGreen : AppColors.textSecondary,
+                      size: 28,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // buttons
+          Row(
+            children: [
+              Expanded(
+                child: _ActionBtn(
+                  label: 'Open',
+                  icon: Icons.lock_open_rounded,
+                  active: isOpen,
+                  disabled: isOpen || isTrans,
+                  onPressed: isOpen || isTrans
+                      ? null
+                      : () => ref
+                            .read(workerControlProvider.notifier)
+                            .openStorage(),
                 ),
-                tooltip: 'Logout',
-                onPressed: () {
-                  ref.read(authStateProvider.notifier).logout();
-                  context.go(
-                    '${RouteNames.transitionSplash}?next=${RouteNames.login}&subtitle=Signing out...',
-                  );
-                },
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _ActionBtn(
+                  label: 'Close',
+                  icon: Icons.lock_rounded,
+                  active: false,
+                  danger: true,
+                  disabled: !isOpen || isTrans,
+                  onPressed: !isOpen || isTrans
+                      ? null
+                      : () => ref
+                            .read(workerControlProvider.notifier)
+                            .closeStorage(),
+                ),
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+// =============================================================================
+//  Robot Status Card (with robot image)
+// =============================================================================
+
+class _RobotStatusCard extends ConsumerWidget {
+  const _RobotStatusCard({required this.pulseCtrl});
+  final AnimationController pulseCtrl;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(robotStatusProvider);
+
+    return _Card(
+      glowBorder: true,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── status rows ──────────────────────────────────────────────────
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.monitor_heart_rounded,
+                      color: _kGreen,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Robot Status',
+                      style: AppTextStyles.headlineSmall,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                _StatusRow(
+                  icon: Icons.settings_rounded,
+                  label: 'Mode',
+                  value: status.mode.label,
+                  valueColor: status.mode.color,
+                ),
+                const SizedBox(height: 10),
+                _StatusRow(
+                  icon: Icons.flag_rounded,
+                  label: 'Mission',
+                  value: status.missionState.label,
+                  valueColor: AppColors.textPrimary,
+                ),
+                const SizedBox(height: 10),
+                _StatusRow(
+                  icon: Icons.inventory_2_outlined,
+                  label: 'Storage',
+                  value: status.storageState.label,
+                  valueColor: status.storageState == StorageState.open
+                      ? AppColors.warning
+                      : AppColors.textSecondary,
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          // ── robot image ───────────────────────────────────────────────────
+          AnimatedBuilder(
+            animation: pulseCtrl,
+            builder: (_, child) => Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: _kGreen.withValues(
+                      alpha: 0.12 + pulseCtrl.value * 0.12,
+                    ),
+                    blurRadius: 28 + pulseCtrl.value * 14,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: child,
+            ),
+            child: ClipOval(
+              child: Image.asset(
+                'assets/images/robot.png',
+                width: 100,
+                height: 100,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusRow extends StatelessWidget {
+  const _StatusRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 13, color: AppColors.textMuted),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: AppTextStyles.bodySmall.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const Spacer(),
+        Text(
+          value,
+          style: AppTextStyles.bodySmall.copyWith(
+            fontWeight: FontWeight.w700,
+            color: valueColor ?? AppColors.textPrimary,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// =============================================================================
+//  Battery Card
+// =============================================================================
+
+class _BatteryCard extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(robotStatusProvider);
+    final pct = status.batteryPercent;
+    final isCrit = Helpers.isBatteryCritical(pct);
+    final isLow = Helpers.isBatteryLow(pct);
+    final color = isCrit
+        ? AppColors.batteryLow
+        : isLow
+        ? AppColors.batteryMedium
+        : _kGreen;
+    final mins = pct * 2; // rough estimate
+    final h = mins ~/ 60;
+    final m = mins % 60;
+
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isCrit
+                    ? Icons.battery_alert_rounded
+                    : Icons.battery_charging_full_rounded,
+                color: color,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              const Text('Battery', style: AppTextStyles.headlineSmall),
+              const Spacer(),
+              if (isCrit)
+                _StateChip(label: 'CRITICAL', color: AppColors.danger)
+              else if (isLow)
+                _StateChip(label: 'LOW', color: AppColors.warning),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '$pct%',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: color,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                'Estimated runtime: ${h}h ${m}m',
+                style: AppTextStyles.labelSmall.copyWith(
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: pct / 100,
+              minHeight: 8,
+              backgroundColor: _kCardBorder,
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =============================================================================
+//  Robot Mode Card
+// =============================================================================
+
+class _RobotModeCard extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mode = ref.watch(workerControlProvider);
+
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.tune_rounded, color: _kGreen, size: 18),
+              const SizedBox(width: 8),
+              const Text('Robot Mode', style: AppTextStyles.headlineSmall),
+              const Spacer(),
+              _StateChip(label: mode.label, color: mode.color),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              _ModeBtn(
+                label: 'Online',
+                icon: Icons.wifi_rounded,
+                active:
+                    mode == RobotMode.online || mode == RobotMode.autonomous,
+                onTap: () =>
+                    ref.read(workerControlProvider.notifier).setOnline(),
+              ),
+              const SizedBox(width: 8),
+              _ModeBtn(
+                label: 'Offline',
+                icon: Icons.wifi_off_rounded,
+                danger: true,
+                active: mode == RobotMode.offline,
+                onTap: () =>
+                    ref.read(workerControlProvider.notifier).setOffline(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _ModeBtn(
+                label: 'Manual',
+                icon: Icons.gamepad_rounded,
+                secondary: true,
+                active: mode == RobotMode.manual,
+                onTap: () =>
+                    ref.read(workerControlProvider.notifier).setManual(),
+              ),
+              const SizedBox(width: 8),
+              _ModeBtn(
+                label: 'Autonomous',
+                icon: Icons.auto_mode_rounded,
+                active: mode == RobotMode.autonomous,
+                onTap: () =>
+                    ref.read(workerControlProvider.notifier).setAutonomous(),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ModeBtn extends StatelessWidget {
+  const _ModeBtn({
+    required this.label,
+    required this.icon,
+    required this.active,
+    required this.onTap,
+    this.danger = false,
+    this.secondary = false,
+  });
+  final String label;
+  final IconData icon;
+  final bool active;
+  final bool danger;
+  final bool secondary;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = danger
+        ? AppColors.danger
+        : secondary
+        ? AppColors.secondary
+        : _kGreen;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: active
+                ? accent.withValues(alpha: 0.15)
+                : const Color(0xFF0D1F2D),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: active ? accent.withValues(alpha: 0.7) : _kCardBorder,
+              width: active ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 15,
+                color: active ? accent : AppColors.textSecondary,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                  color: active ? accent : AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// =============================================================================
+//  Recent Activity Card
+// =============================================================================
+
+class _RecentActivityCard extends ConsumerWidget {
+  const _RecentActivityCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(robotStatusProvider);
+
+    // Build activity list from live state
+    final items = <_ActivityItem>[
+      _ActivityItem(
+        label: status.isConnected ? 'Robot connected' : 'Robot disconnected',
+        color: status.isConnected ? _kGreen : AppColors.danger,
+        time: 'live',
+      ),
+      _ActivityItem(
+        label: 'Battery status: ${status.batteryPercent}%',
+        color: Helpers.isBatteryCritical(status.batteryPercent)
+            ? AppColors.danger
+            : Helpers.isBatteryLow(status.batteryPercent)
+            ? AppColors.warning
+            : _kGreen,
+        time: 'live',
+      ),
+      _ActivityItem(
+        label: 'Storage ${status.storageState.label.toLowerCase()}',
+        color: status.storageState == StorageState.open
+            ? AppColors.warning
+            : AppColors.textSecondary,
+        time: 'live',
+      ),
+      _ActivityItem(
+        label: 'Mode: ${status.mode.label}',
+        color: status.mode.color,
+        time: 'live',
+      ),
+    ];
+
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.history_rounded, color: _kGreen, size: 18),
+              const SizedBox(width: 8),
+              const Text('Recent Activity', style: AppTextStyles.headlineSmall),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...items.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 9),
+              child: Row(
+                children: [
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: item.color,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      item.label,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    item.time,
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                  Container(
+                    width: 7,
+                    height: 7,
+                    margin: const EdgeInsets.only(left: 8),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: item.color,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActivityItem {
+  const _ActivityItem({
+    required this.label,
+    required this.color,
+    required this.time,
+  });
+  final String label;
+  final Color color;
+  final String time;
+}
+
+// =============================================================================
+//  Shared card shell
+// =============================================================================
+
+class _Card extends StatelessWidget {
+  const _Card({required this.child, this.glowBorder = false});
+  final Widget child;
+  final bool glowBorder;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _kCard,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: glowBorder ? _kCardBorderGreen : _kCardBorder,
+          width: glowBorder ? 1.2 : 1,
+        ),
+        boxShadow: glowBorder
+            ? [
+                BoxShadow(
+                  color: _kGreen.withValues(alpha: 0.06),
+                  blurRadius: 20,
+                  spreadRadius: 1,
+                ),
+              ]
+            : null,
+      ),
+      child: child,
+    );
+  }
+}
+
+// =============================================================================
+//  Shared small widgets
+// =============================================================================
+
+class _StateChip extends StatelessWidget {
+  const _StateChip({required this.label, required this.color});
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: color,
+          letterSpacing: 0.4,
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionBtn extends StatelessWidget {
+  const _ActionBtn({
+    required this.label,
+    required this.icon,
+    required this.active,
+    required this.onPressed,
+    this.disabled = false,
+    this.danger = false,
+  });
+  final String label;
+  final IconData icon;
+  final bool active;
+  final bool disabled;
+  final bool danger;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = danger ? AppColors.danger : _kGreen;
+    final eff = disabled ? 0.35 : 1.0;
+
+    return GestureDetector(
+      onTap: onPressed,
+      child: Opacity(
+        opacity: eff,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 13),
+          decoration: BoxDecoration(
+            color: active
+                ? accent.withValues(alpha: 0.18)
+                : const Color(0xFF0D1F2D),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: active ? accent.withValues(alpha: 0.7) : _kCardBorder,
+              width: active ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: active ? accent : AppColors.textSecondary,
+              ),
+              const SizedBox(width: 7),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: active ? accent : AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
