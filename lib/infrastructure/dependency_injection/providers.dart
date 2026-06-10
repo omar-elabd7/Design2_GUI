@@ -26,6 +26,8 @@ import '../repositories/order_repository_impl.dart';
 import '../repositories/live_order_repository_impl.dart';
 import '../repositories/robot_repository_impl.dart';
 import '../repositories/worker_control_repository_impl.dart';
+import '../repositories/live_worker_control_repository_impl.dart';
+import '../data_sources/live/live_worker_control_data_source.dart';
 
 // ─── WebSocket Client (live mode only) ────────────────────────────────────────
 final webSocketClientProvider = Provider<WebSocketClient>((ref) {
@@ -109,6 +111,10 @@ final robotRepositoryProvider = Provider<RobotRepository>((ref) {
 final workerControlRepositoryProvider = Provider<WorkerControlRepository>((
   ref,
 ) {
+  if (kUseLiveBackend) {
+    final ws = ref.watch(webSocketClientProvider);
+    return LiveWorkerControlRepositoryImpl(LiveWorkerControlDataSource(ws));
+  }
   return WorkerControlRepositoryImpl(
     ref.watch(mockWorkerControlDataSourceProvider),
   );
