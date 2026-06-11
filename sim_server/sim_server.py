@@ -338,8 +338,7 @@ async def run_mission(order_id: str, items: list):
                 "timestamp": _now(),
             })
             await broadcast(robot.status_msg())
-            await _end_mission(order_id)
-            return
+            return  # finally clause will call _end_mission once
 
         # Vision PASS: continue normal flow
         await asyncio.sleep(1.0)
@@ -471,7 +470,12 @@ async def _end_mission(order_id: str):
     robot.active_order_id = None
     robot.linear_speed = 0.0
     robot.distance_remaining = 0.0
-    robot.fault_type = "none"
+    # Preserve terminal business-outcome faults (visionFailed) so Flutter
+    # keeps showing the banner until the customer navigates away.
+    # All other faults are cleared when the mission ends.
+    _PRESERVE_FAULTS = {"visionFailed"}
+    if robot.fault_type not in _PRESERVE_FAULTS:
+        robot.fault_type = "none"
     robot.current_fruit = None
     robot.paused = False
     await broadcast(robot.status_msg())
@@ -717,7 +721,9 @@ def _cancel_mission():
     if mission_task and not mission_task.done():
         mission_task.cancel()
     robot.paused = False
+    robot.fault_type = "none"   # always clear fault when a new mission starts
     robot.rfid_event = asyncio.Event()
+    robot.vision_event = None
 
 async def _approve_payment(order_id: str, amount: float):
     await asyncio.sleep(1.0)
