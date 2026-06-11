@@ -165,6 +165,8 @@ extension FaultTypeExtension on FaultType {
         return 'Communication Lost';
       case FaultType.missionCancelled:
         return 'Mission Cancelled';
+      case FaultType.visionFailed:
+        return 'Item Out of Stock';
     }
   }
 }
