@@ -53,6 +53,7 @@ class OrderTrackingScreen extends ConsumerWidget {
     final hasFault = faultType != FaultType.none;
     final isRfid = missionState == MissionState.rfidAwaiting;
     final isStorageOpen = missionState == MissionState.storageOpened;
+    final isVisionFailed = faultType == FaultType.visionFailed;
 
     return Scaffold(
       backgroundColor: isDark
@@ -123,6 +124,7 @@ class OrderTrackingScreen extends ConsumerWidget {
                           isStorageOpen: isStorageOpen,
                           hasFault: hasFault,
                           isComplete: isComplete,
+                          isVisionFailed: isVisionFailed,
                           orderId: orderId,
                           isDark: isDark,
                         ),
@@ -278,6 +280,7 @@ class _CenterZone extends StatefulWidget {
     required this.isStorageOpen,
     required this.hasFault,
     required this.isComplete,
+    required this.isVisionFailed,
     required this.orderId,
     required this.isDark,
   });
@@ -289,6 +292,7 @@ class _CenterZone extends StatefulWidget {
   final bool isStorageOpen;
   final bool hasFault;
   final bool isComplete;
+  final bool isVisionFailed;
   final String orderId;
   final bool isDark;
 
@@ -343,6 +347,41 @@ class _CenterZoneState extends State<_CenterZone>
                     ),
                   ),
                   const SizedBox(height: 24),
+                  // Vision fail: clean "Return to Dashboard" — looks like a
+                  // business outcome, not a system error
+                  if (widget.isVisionFailed)
+                    Material(
+                      color: AppColors.warning.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                      child: InkWell(
+                        onTap: () => context.go(RouteNames.customerHome),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 28,
+                            vertical: 14,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.dashboard_rounded,
+                                size: 18,
+                                color: AppColors.warning,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Return to Dashboard',
+                                style: AppTextStyles.labelLarge.copyWith(
+                                  color: AppColors.warning,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
                 if (widget.isComplete && !widget.hasFault) ...[
                   _DeliveryCompleteCard(

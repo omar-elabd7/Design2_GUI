@@ -173,6 +173,18 @@
         </div>
       </div>
 
+      <!-- Vision -->
+      <div class="ctrl-section">
+        <div class="ctrl-section-title">Vision Simulation</div>
+        <div class="btn-grid">
+          <button class="btn btn-success" onclick="simVision(true)">✓ Vision Pass</button>
+          <button class="btn btn-danger"  onclick="simVision(false)">✗ Vision Fail</button>
+        </div>
+        <div style="margin-top:6px;font-size:11px;color:var(--text-muted);">
+          Click during the <b>visionChecking</b> state (6 s window).
+        </div>
+      </div>
+
       <!-- Battery -->
       <div class="ctrl-section">
         <div class="ctrl-section-title">Battery</div>
@@ -418,6 +430,11 @@ function send(msg) {
 function simRfid(success) {
   const rfid = document.getElementById('rfid-input').value.trim() || 'RFID_A1B2C3';
   send({ type: 'debug.rfid_simulate', rfid_card_id: rfid, order_id: currentOrderId, should_succeed: success });
+}
+
+function simVision(shouldPass) {
+  send({ type: 'debug.vision_simulate', order_id: currentOrderId, should_pass: shouldPass });
+  toast(shouldPass ? '✓ Vision Pass sent' : '✗ Vision Fail sent', shouldPass ? 'success' : 'error');
 }
 
 function forceState() {

@@ -100,6 +100,10 @@ class RobotState:
         self.rfid_success: bool = False
         self.rfid_card_id: str = ""
 
+        # Vision control — set at visionChecking step
+        self.vision_event: Optional[asyncio.Event] = None
+        self.vision_pass: bool = True   # True = fruit correct; False = wrong fruit
+
         # Active Flutter session (populated by user.session message)
         self.active_session_user_id:  Optional[str] = None
         self.active_session_username: str = ""
@@ -294,6 +298,8 @@ async def run_mission(order_id: str, items: list):
 
         #  3. Vision Checking 
         robot.mission_state = "visionChecking"
+        robot.vision_event = asyncio.Event()
+        robot.vision_pass = True   # default: pass unless dashboard overrides
         await _emit_event(order_id, "visionChecking", "Vision module checking stock availability...", 30)
         await broadcast({
             "type": "vision.fruit_detection",
@@ -303,7 +309,40 @@ async def run_mission(order_id: str, items: list):
             "bounding_box": {"x": 118, "y": 82, "w": 58, "h": 52},
             "timestamp": _now(),
         })
-        await asyncio.sleep(3.0)
+        # Wait up to 6 s for dashboard vision signal; default pass if no signal
+        try:
+            await asyncio.wait_for(robot.vision_event.wait(), timeout=6.0)
+        except asyncio.TimeoutError:
+            robot.vision_pass = True  # no override → pass
+
+        if not robot.vision_pass:
+            # ── Vision FAIL: wrong fruit / out of stock ──────────────────────
+            # Compute refund amount from order items
+            refund_amount = sum(
+                i.get("unit_price", 0) * i.get("quantity", 1) for i in items
+            )
+            # Refund the credits for the active session user
+            if robot.active_session_username:
+                uname = robot.active_session_username
+                user_credits[uname] = user_credits.get(uname, 0) + refund_amount
+            robot.mission_state = "failed"
+            robot.fault_type = "visionFailed"
+            await broadcast({
+                "type": "mission.event",
+                "event": "visionFailed",
+                "order_id": order_id,
+                "message": "Unfortunately, this fruit is currently out of stock. Your credits have been refunded.",
+                "fault_type": "visionFailed",
+                "refund_done": True,
+                "refund_amount": round(refund_amount, 2),
+                "timestamp": _now(),
+            })
+            await broadcast(robot.status_msg())
+            await _end_mission(order_id)
+            return
+
+        # Vision PASS: continue normal flow
+        await asyncio.sleep(1.0)
 
         #  4. Storing 
         robot.mission_state = "storing"
@@ -621,6 +660,13 @@ async def handle_incoming(msg: dict, source: str = "flutter"):
         if robot.rfid_event:
             robot.rfid_event.set()
         await dash_push({"type": "control_ack", "action": "rfid_simulated", "success": should_succeed})
+
+    elif msg_type == "debug.vision_simulate":
+        should_pass = msg.get("should_pass", True)
+        robot.vision_pass = should_pass
+        if robot.vision_event:
+            robot.vision_event.set()
+        await dash_push({"type": "control_ack", "action": "vision_simulated", "pass": should_pass})
 
     elif msg_type == "debug.battery_drain":
         amount = int(msg.get("amount", 20))

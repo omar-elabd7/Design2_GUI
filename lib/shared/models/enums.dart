@@ -42,6 +42,7 @@ enum FaultType {
   storageFault,
   communicationLost,
   missionCancelled,
+  visionFailed,
 }
 
 enum TeleopDirection { forward, backward, left, right, stop }

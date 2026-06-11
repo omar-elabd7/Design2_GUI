@@ -49,7 +49,8 @@ class _MissionAlertBannerState extends State<MissionAlertBanner>
         return _AlertData(
           icon: Icons.block_rounded,
           title: 'OBSTACLE DETECTED',
-          message: 'The robot has encountered an obstacle on its path. '
+          message:
+              'The robot has encountered an obstacle on its path. '
               'It will attempt to reroute automatically.',
           color: AppColors.warning,
           showRetry: true,
@@ -58,7 +59,8 @@ class _MissionAlertBannerState extends State<MissionAlertBanner>
         return _AlertData(
           icon: Icons.battery_alert_rounded,
           title: 'LOW BATTERY WARNING',
-          message: 'Robot battery is critically low. '
+          message:
+              'Robot battery is critically low. '
               'It may need to return to base for charging.',
           color: AppColors.warning,
           showRetry: false,
@@ -76,8 +78,7 @@ class _MissionAlertBannerState extends State<MissionAlertBanner>
         return _AlertData(
           icon: Icons.remove_shopping_cart_rounded,
           title: 'ITEM OUT OF STOCK',
-          message:
-              'One or more items in your order are unavailable.',
+          message: 'One or more items in your order are unavailable.',
           color: AppColors.danger,
           showRetry: false,
           showCancel: true,
@@ -102,8 +103,7 @@ class _MissionAlertBannerState extends State<MissionAlertBanner>
         return _AlertData(
           icon: Icons.wifi_off_rounded,
           title: 'COMMUNICATION LOST',
-          message:
-              'Lost connection to the robot. Attempting to reconnect...',
+          message: 'Lost connection to the robot. Attempting to reconnect...',
           color: AppColors.danger,
           showRetry: true,
         );
@@ -114,6 +114,17 @@ class _MissionAlertBannerState extends State<MissionAlertBanner>
           message: 'This delivery mission has been cancelled.',
           color: AppColors.textSecondary,
           showRetry: false,
+        );
+      case FaultType.visionFailed:
+        return _AlertData(
+          icon: Icons.no_food_rounded,
+          title: 'ITEM UNAVAILABLE',
+          message:
+              'Unfortunately, this fruit is currently out of stock. '
+              'Your credits have been refunded.',
+          color: AppColors.warning,
+          showRetry: false,
+          showCancel: false,
         );
       case FaultType.none:
         return null;
@@ -168,10 +179,12 @@ class _MissionAlertBannerState extends State<MissionAlertBanner>
               const SizedBox(height: 8),
               Text(
                 alert.message,
-                style: AppTextStyles.bodySmall
-                    .copyWith(
-                        color: widget.isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
-                        fontSize: 12),
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: widget.isDark
+                      ? AppColors.textSecondary
+                      : AppColors.lightTextSecondary,
+                  fontSize: 12,
+                ),
               ),
               if (alert.showRetry || alert.showCancel) ...[
                 const SizedBox(height: 12),
@@ -249,9 +262,13 @@ class _ActionBtn extends StatelessWidget {
             children: [
               Icon(icon, size: 14, color: color),
               const SizedBox(width: 6),
-              Text(label,
-                  style: AppTextStyles.labelLarge
-                      .copyWith(fontSize: 11, color: color)),
+              Text(
+                label,
+                style: AppTextStyles.labelLarge.copyWith(
+                  fontSize: 11,
+                  color: color,
+                ),
+              ),
             ],
           ),
         ),
