@@ -87,9 +87,11 @@ class _MissionAlertBannerState extends State<MissionAlertBanner>
         return _AlertData(
           icon: Icons.nfc_rounded,
           title: 'RFID VERIFICATION FAILED',
-          message: 'Your RFID card was not recognized. Please try again.',
+          message:
+              'All 3 RFID attempts were unsuccessful. '
+              'The robot is returning to its home position.',
           color: AppColors.danger,
-          showRetry: true,
+          showRetry: false,
         );
       case FaultType.storageFault:
         return _AlertData(

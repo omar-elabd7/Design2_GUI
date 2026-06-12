@@ -365,45 +365,91 @@ async def run_mission(order_id: str, items: list):
         robot.linear_speed = 0.0
         robot.distance_remaining = 0.0
 
-        #  6. RFID Awaiting 
-        robot.mission_state = "rfidAwaiting"
-        robot.rfid_event = asyncio.Event()
-        robot.rfid_success = False
-        await _emit_event(order_id, "rfidAwaiting", "Please tap your RFID card on the robot.", 65)
-        await broadcast({
-            "type": "event.log",
-            "level": "warning",
-            "event_type": "rfidAwaiting",
-            "message": "⏳ Waiting for RFID scan (60 s timeout)...",
-            "order_id": order_id,
-            "timestamp": _now(),
-        })
+        #  6. RFID Awaiting  (up to 3 trials) 
+        MAX_RFID_TRIALS = 3
+        rfid_verified = False
 
-        # Wait for RFID signal (timeout 60 s)
-        try:
-            await asyncio.wait_for(robot.rfid_event.wait(), timeout=60.0)
-        except asyncio.TimeoutError:
-            robot.mission_state = "failed"
-            robot.fault_type = "rfidFailed"
-            await _emit_event(order_id, "error", "RFID scan timed out. Mission failed.", 65)
-            await _end_mission(order_id)
-            return
+        for trial in range(1, MAX_RFID_TRIALS + 1):
+            robot.mission_state = "rfidAwaiting"
+            robot.rfid_event = asyncio.Event()
+            robot.rfid_success = False
+            robot.rfid_card_id = ""
 
-        # RFID result
-        if not robot.rfid_success:
-            robot.mission_state = "failed"
-            robot.fault_type = "rfidFailed"
+            trial_label = f"Attempt {trial}/{MAX_RFID_TRIALS}"
+            prompt = (
+                "Please tap your RFID card on the robot."
+                if trial == 1
+                else f"Attempt {trial}/{MAX_RFID_TRIALS}: Please tap your RFID card again."
+            )
+            await _emit_event(order_id, "rfidAwaiting", prompt, 65)
             await broadcast({
-                "type": "rfid.result",
-                "success": False,
-                "rfid_card_id": robot.rfid_card_id,
+                "type": "event.log",
+                "level": "warning",
+                "event_type": "rfidAwaiting",
+                "message": f"⏳ Waiting for RFID scan — {trial_label} (20 s)...",
                 "order_id": order_id,
-                "message": "RFID verification failed.",
                 "timestamp": _now(),
             })
-            await _emit_event(order_id, "error", "RFID verification failed. Mission aborted.", 65)
-            await _end_mission(order_id)
-            return
+            await broadcast(robot.status_msg())
+
+            # Wait up to 20 s per trial
+            timed_out = False
+            try:
+                await asyncio.wait_for(robot.rfid_event.wait(), timeout=20.0)
+            except asyncio.TimeoutError:
+                timed_out = True
+
+            if not timed_out and robot.rfid_success:
+                # ── SUCCESS ───────────────────────────────────────────────────
+                rfid_verified = True
+                break
+
+            # ── FAILURE for this trial ────────────────────────────────────────
+            remaining = MAX_RFID_TRIALS - trial
+            if timed_out:
+                fail_msg = f"⏰ No scan detected — {trial_label}."
+            else:
+                fail_msg = f"❌ RFID card not recognised — {trial_label}."
+                await broadcast({
+                    "type": "rfid.result",
+                    "success": False,
+                    "rfid_card_id": robot.rfid_card_id,
+                    "order_id": order_id,
+                    "message": f"RFID verification failed. {trial_label}.",
+                    "timestamp": _now(),
+                })
+
+            if remaining > 0:
+                fail_msg += f" {remaining} {'try' if remaining == 1 else 'tries'} remaining."
+
+            await broadcast({
+                "type": "event.log",
+                "level": "warning" if remaining > 0 else "error",
+                "event_type": "rfidAwaiting" if remaining > 0 else "error",
+                "message": fail_msg,
+                "order_id": order_id,
+                "timestamp": _now(),
+            })
+            await broadcast(robot.status_msg())
+
+            if remaining > 0:
+                await asyncio.sleep(1.5)   # brief pause before next attempt
+
+        # ── All trials exhausted ──────────────────────────────────────────────
+        if not rfid_verified:
+            robot.mission_state = "returning"
+            robot.fault_type = "rfidFailed"
+            robot.linear_speed = 0.18
+            await _emit_event(
+                order_id, "error",
+                "RFID verification failed after 3 attempts. Robot returning to home position.",
+                65,
+            )
+            await broadcast(robot.status_msg())
+            await asyncio.sleep(5.0)   # simulate homing navigation
+            robot.linear_speed = 0.0
+            await broadcast(robot.status_msg())
+            return  # finally clause will call _end_mission once
 
         #  7. Storage Opened 
         robot.mission_state = "storageOpened"
@@ -470,10 +516,9 @@ async def _end_mission(order_id: str):
     robot.active_order_id = None
     robot.linear_speed = 0.0
     robot.distance_remaining = 0.0
-    # Preserve terminal business-outcome faults (visionFailed) so Flutter
-    # keeps showing the banner until the customer navigates away.
-    # All other faults are cleared when the mission ends.
-    _PRESERVE_FAULTS = {"visionFailed"}
+    # Preserve terminal business-outcome faults so Flutter keeps showing the
+    # banner until the customer navigates away.  All other faults are cleared.
+    _PRESERVE_FAULTS = {"visionFailed", "rfidFailed"}
     if robot.fault_type not in _PRESERVE_FAULTS:
         robot.fault_type = "none"
     robot.current_fruit = None
