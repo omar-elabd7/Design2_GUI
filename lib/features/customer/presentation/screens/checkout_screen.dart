@@ -201,8 +201,10 @@ class _TopBar extends ConsumerWidget {
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           child: InkWell(
-            onTap: () =>
-                context.canPop() ? context.pop() : context.go(RouteNames.cart),
+            onTap: () {
+              ref.read(cartProvider.notifier).clearCart();
+              context.go(RouteNames.customerHome);
+            },
             borderRadius: BorderRadius.circular(12),
             child: Container(
               padding: const EdgeInsets.all(10),
@@ -982,16 +984,19 @@ class _PaymentPanel extends StatelessWidget {
 
                 // Cancel link
                 Center(
-                  child: TextButton(
-                    onPressed: () => context.canPop()
-                        ? context.pop()
-                        : context.go(RouteNames.cart),
-                    child: Text(
-                      'Cancel & return to cart',
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: textSecondary,
-                        decoration: TextDecoration.underline,
-                        decorationColor: textSecondary,
+                  child: Consumer(
+                    builder: (context, ref, _) => TextButton(
+                      onPressed: () {
+                        ref.read(cartProvider.notifier).clearCart();
+                        context.go(RouteNames.customerHome);
+                      },
+                      child: Text(
+                        'Cancel & return to cart',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: textSecondary,
+                          decoration: TextDecoration.underline,
+                          decorationColor: textSecondary,
+                        ),
                       ),
                     ),
                   ),
