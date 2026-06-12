@@ -36,6 +36,12 @@ class LiveWorkerControlDataSource {
     await _httpPost(kRobotModeEndpoint, body: {'mode': mode.name});
   }
 
+  // ── Fault management ─────────────────────────────────────────────────────────
+
+  Future<void> clearFaults() async {
+    _ws.send({'type': 'worker.clear_faults'});
+  }
+
   // ── Storage state stream (via WS) ────────────────────────────────────────────
 
   Stream<StorageState> watchStorageState() {

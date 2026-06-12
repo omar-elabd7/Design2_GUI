@@ -24,5 +24,8 @@ class LiveWorkerControlRepositoryImpl implements WorkerControlRepository {
   Future<void> setOfflineMode() => _src.setMode(RobotMode.offline);
 
   @override
+  Future<void> clearFaults() => _src.clearFaults();
+
+  @override
   Stream<StorageState> watchStorageState() => _src.watchStorageState();
 }

@@ -717,6 +717,21 @@ async def handle_incoming(msg: dict, source: str = "flutter"):
             robot.vision_event.set()
         await dash_push({"type": "control_ack", "action": "vision_simulated", "pass": should_pass})
 
+    elif msg_type == "worker.clear_faults":
+        # Worker/storekeeper manually clears all active faults so customers
+        # can place new orders again.
+        robot.fault_type = "none"
+        await broadcast(robot.status_msg())
+        await broadcast({
+            "type": "event.log",
+            "level": "system",
+            "event_type": "faultCleared",
+            "message": "✅ All faults cleared by storekeeper.",
+            "order_id": robot.active_order_id or "",
+            "timestamp": _now(),
+        })
+        await dash_push({"type": "control_ack", "action": "faults_cleared"})
+
     elif msg_type == "debug.battery_drain":
         amount = int(msg.get("amount", 20))
         robot.battery = max(0, robot.battery - amount)

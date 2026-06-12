@@ -36,12 +36,16 @@ class WorkerControlNotifier extends StateNotifier<RobotMode> {
   Future<void> closeStorage() async {
     await _ref.read(workerControlRepositoryProvider).closeStorage();
   }
+
+  Future<void> clearFaults() async {
+    await _ref.read(workerControlRepositoryProvider).clearFaults();
+  }
 }
 
 final workerControlProvider =
     StateNotifierProvider<WorkerControlNotifier, RobotMode>((ref) {
-  return WorkerControlNotifier(ref);
-});
+      return WorkerControlNotifier(ref);
+    });
 
 final workerStorageStateProvider = StreamProvider<StorageState>((ref) {
   final repo = ref.watch(workerControlRepositoryProvider);

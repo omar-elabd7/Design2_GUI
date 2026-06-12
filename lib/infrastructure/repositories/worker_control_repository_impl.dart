@@ -25,6 +25,9 @@ class WorkerControlRepositoryImpl implements WorkerControlRepository {
   Future<void> setOfflineMode() => _mockDataSource.setOfflineMode();
 
   @override
+  Future<void> clearFaults() => _mockDataSource.clearFaults();
+
+  @override
   Stream<StorageState> watchStorageState() =>
       _mockDataSource.storageStateStream;
 }

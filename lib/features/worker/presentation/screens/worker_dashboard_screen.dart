@@ -103,6 +103,8 @@ class _WorkerDashboardScreenState extends ConsumerState<WorkerDashboardScreen>
                       const SizedBox(height: 12),
                       _BatteryCard(),
                       const SizedBox(height: 12),
+                      _ActiveFaultsCard(),
+                      const SizedBox(height: 12),
                       _RobotModeCard(),
                       const SizedBox(height: 12),
                       const _RecentActivityCard(),
@@ -939,6 +941,141 @@ class _ModeBtn extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// =============================================================================
+//  Active Faults Card
+// =============================================================================
+
+class _ActiveFaultsCard extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(robotStatusProvider);
+    final fault = status.faultType;
+    final hasFault = fault != FaultType.none;
+
+    // Faults that require storekeeper intervention to clear
+    const blockerFaults = {FaultType.rfidFailed};
+    final isBlocker = blockerFaults.contains(fault);
+
+    final accentColor = isBlocker ? AppColors.danger : AppColors.warning;
+
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── header ──────────────────────────────────────────────────────
+          Row(
+            children: [
+              Icon(
+                hasFault
+                    ? Icons.warning_amber_rounded
+                    : Icons.check_circle_rounded,
+                color: hasFault ? accentColor : _kGreen,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              const Text('Active Faults', style: AppTextStyles.headlineSmall),
+              const Spacer(),
+              if (hasFault)
+                _StateChip(
+                  label: isBlocker ? 'BLOCKING' : 'WARNING',
+                  color: accentColor,
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          if (!hasFault)
+            // ── no faults ─────────────────────────────────────────────────
+            Row(
+              children: [
+                Icon(
+                  Icons.check_circle_outline_rounded,
+                  color: _kGreen.withValues(alpha: 0.6),
+                  size: 16,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'No active faults',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            )
+          else ...[
+            // ── fault row ─────────────────────────────────────────────────
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: accentColor.withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: accentColor.withValues(alpha: 0.35)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: accentColor,
+                      boxShadow: [
+                        BoxShadow(
+                          color: accentColor.withValues(alpha: 0.5),
+                          blurRadius: 6,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          fault.label,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: accentColor,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          isBlocker
+                              ? 'New orders are blocked until cleared'
+                              : 'Robot may have limited capability',
+                          style: AppTextStyles.labelSmall.copyWith(
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // ── clear button ──────────────────────────────────────────────
+            SizedBox(
+              width: double.infinity,
+              child: _ActionBtn(
+                label: 'Clear All Faults',
+                icon: Icons.playlist_remove_rounded,
+                active: true,
+                danger: true,
+                onPressed: () =>
+                    ref.read(workerControlProvider.notifier).clearFaults(),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

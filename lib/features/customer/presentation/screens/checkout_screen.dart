@@ -7,7 +7,9 @@ import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/glass_panel.dart';
 import '../../../../core/routing/route_names.dart';
 import '../../../../core/providers/theme_provider.dart';
+import '../../../../shared/models/enums.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../robot_status/presentation/providers/robot_status_provider.dart';
 import '../providers/cart_provider.dart';
 import '../providers/checkout_provider.dart';
 
@@ -66,7 +68,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     final cart = ref.watch(cartProvider);
     final total = ref.watch(cartTotalProvider);
     final checkoutState = ref.watch(checkoutProvider);
-    final canPay = user.credits >= total && cart.isNotEmpty;
+    final robotStatus = ref.watch(robotStatusProvider);
+    final isRfidFaultActive = robotStatus.faultType == FaultType.rfidFailed;
+    final canPay =
+        user.credits >= total && cart.isNotEmpty && !isRfidFaultActive;
 
     // -- Error snackbar ----------------------------------------------------
     if (checkoutState.error != null) {
@@ -97,10 +102,12 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     }
 
     final bg = isDark ? AppColors.backgroundDark : AppColors.lightBackground;
-    final textPrimary =
-        isDark ? AppColors.textPrimary : AppColors.lightTextPrimary;
-    final textSecondary =
-        isDark ? AppColors.textSecondary : AppColors.lightTextSecondary;
+    final textPrimary = isDark
+        ? AppColors.textPrimary
+        : AppColors.lightTextPrimary;
+    final textSecondary = isDark
+        ? AppColors.textSecondary
+        : AppColors.lightTextSecondary;
 
     return Scaffold(
       backgroundColor: bg,
@@ -147,6 +154,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
                               cart: cart,
                               total: total,
                               canPay: canPay,
+                              isRfidFaultActive: isRfidFaultActive,
                               isLoading: checkoutState.isLoading,
                               isDark: isDark,
                               textPrimary: textPrimary,
@@ -179,10 +187,12 @@ class _TopBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final textPrimary =
-        isDark ? AppColors.textPrimary : AppColors.lightTextPrimary;
-    final textSecondary =
-        isDark ? AppColors.textSecondary : AppColors.lightTextSecondary;
+    final textPrimary = isDark
+        ? AppColors.textPrimary
+        : AppColors.lightTextPrimary;
+    final textSecondary = isDark
+        ? AppColors.textSecondary
+        : AppColors.lightTextSecondary;
 
     return Row(
       children: [
@@ -198,8 +208,9 @@ class _TopBar extends ConsumerWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color:
-                      isDark ? AppColors.cardBorder : AppColors.lightCardBorder,
+                  color: isDark
+                      ? AppColors.cardBorder
+                      : AppColors.lightCardBorder,
                 ),
               ),
               child: Icon(
@@ -245,8 +256,11 @@ class _TopBar extends ConsumerWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.verified_user_outlined,
-                  size: 16, color: AppColors.success),
+              const Icon(
+                Icons.verified_user_outlined,
+                size: 16,
+                color: AppColors.success,
+              ),
               const SizedBox(width: 6),
               Text(
                 'Secure Checkout',
@@ -350,8 +364,11 @@ class _OrderItemsPanel extends StatelessWidget {
                     color: AppColors.primary.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.shopping_bag_outlined,
-                      size: 22, color: AppColors.primaryLight),
+                  child: const Icon(
+                    Icons.shopping_bag_outlined,
+                    size: 22,
+                    color: AppColors.primaryLight,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Column(
@@ -387,46 +404,60 @@ class _OrderItemsPanel extends StatelessWidget {
               children: [
                 const SizedBox(width: 50),
                 Expanded(
-                  child: Text('Product',
-                      style: AppTextStyles.labelSmall
-                          .copyWith(color: textSecondary)),
+                  child: Text(
+                    'Product',
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: textSecondary,
+                    ),
+                  ),
                 ),
                 SizedBox(
                   width: 60,
-                  child: Text('Unit',
-                      textAlign: TextAlign.center,
-                      style: AppTextStyles.labelSmall
-                          .copyWith(color: textSecondary)),
+                  child: Text(
+                    'Unit',
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: textSecondary,
+                    ),
+                  ),
                 ),
                 SizedBox(
                   width: 50,
-                  child: Text('Qty',
-                      textAlign: TextAlign.center,
-                      style: AppTextStyles.labelSmall
-                          .copyWith(color: textSecondary)),
+                  child: Text(
+                    'Qty',
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: textSecondary,
+                    ),
+                  ),
                 ),
                 SizedBox(
                   width: 90,
-                  child: Text('Price',
-                      textAlign: TextAlign.end,
-                      style: AppTextStyles.labelSmall
-                          .copyWith(color: textSecondary)),
+                  child: Text(
+                    'Price',
+                    textAlign: TextAlign.end,
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: textSecondary,
+                    ),
+                  ),
                 ),
                 SizedBox(
                   width: 100,
-                  child: Text('Subtotal',
-                      textAlign: TextAlign.end,
-                      style: AppTextStyles.labelSmall
-                          .copyWith(color: textSecondary)),
+                  child: Text(
+                    'Subtotal',
+                    textAlign: TextAlign.end,
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: textSecondary,
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
           Divider(
             height: 1,
-            color:
-                (isDark ? AppColors.cardBorder : AppColors.lightCardBorder)
-                    .withValues(alpha: 0.5),
+            color: (isDark ? AppColors.cardBorder : AppColors.lightCardBorder)
+                .withValues(alpha: 0.5),
           ),
 
           // -- Item rows -----------------------------------------------
@@ -538,8 +569,10 @@ class _OrderItemRow extends StatelessWidget {
             width: 50,
             child: Center(
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
@@ -592,6 +625,7 @@ class _PaymentPanel extends StatelessWidget {
     required this.cart,
     required this.total,
     required this.canPay,
+    required this.isRfidFaultActive,
     required this.isLoading,
     required this.isDark,
     required this.textPrimary,
@@ -603,6 +637,7 @@ class _PaymentPanel extends StatelessWidget {
   final List<CartEntry> cart;
   final double total;
   final bool canPay;
+  final bool isRfidFaultActive;
   final bool isLoading;
   final bool isDark;
   final Color textPrimary;
@@ -629,8 +664,11 @@ class _PaymentPanel extends StatelessWidget {
                   color: AppColors.primary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.account_balance_wallet_rounded,
-                    size: 22, color: AppColors.primaryLight),
+                child: const Icon(
+                  Icons.account_balance_wallet_rounded,
+                  size: 22,
+                  color: AppColors.primaryLight,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -656,8 +694,10 @@ class _PaymentPanel extends StatelessWidget {
               ),
               // Status chip
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: (hasEnough ? AppColors.success : AppColors.danger)
                       .withValues(alpha: 0.12),
@@ -780,8 +820,11 @@ class _PaymentPanel extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.warning_amber_rounded,
-                            size: 18, color: AppColors.danger),
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          size: 18,
+                          color: AppColors.danger,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -798,6 +841,55 @@ class _PaymentPanel extends StatelessWidget {
 
                 const Spacer(),
 
+                // ── RFID fault blocking banner ──────────────────────────
+                if (isRfidFaultActive) ...[
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.danger.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.danger.withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.nfc_rounded,
+                          size: 20,
+                          color: AppColors.danger,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Orders temporarily blocked',
+                                style: AppTextStyles.labelMedium.copyWith(
+                                  color: AppColors.danger,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'An RFID fault is active. A storekeeper must clear the fault before new orders can be placed.',
+                                style: AppTextStyles.bodySmall.copyWith(
+                                  color: AppColors.danger.withValues(
+                                    alpha: 0.8,
+                                  ),
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
                 // -- Delivery note ---------------------------------------
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -810,8 +902,11 @@ class _PaymentPanel extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.smart_toy_outlined,
-                          size: 18, color: AppColors.info),
+                      const Icon(
+                        Icons.smart_toy_outlined,
+                        size: 18,
+                        color: AppColors.info,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -835,8 +930,8 @@ class _PaymentPanel extends StatelessWidget {
                     color: canPay
                         ? AppColors.primary
                         : (isDark
-                            ? AppColors.surface
-                            : AppColors.lightInputFill),
+                              ? AppColors.surface
+                              : AppColors.lightInputFill),
                     borderRadius: BorderRadius.circular(14),
                     elevation: canPay ? 4 : 0,
                     shadowColor: AppColors.primary.withValues(alpha: 0.4),
@@ -870,7 +965,8 @@ class _PaymentPanel extends StatelessWidget {
                                       color: canPay
                                           ? Colors.white
                                           : textSecondary.withValues(
-                                              alpha: 0.5),
+                                              alpha: 0.5,
+                                            ),
                                       fontSize: 15,
                                     ),
                                   ),
@@ -924,21 +1020,24 @@ class _SummaryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final secColor =
-        isDark ? AppColors.textSecondary : AppColors.lightTextSecondary;
-    final priColor =
-        isDark ? AppColors.textPrimary : AppColors.lightTextPrimary;
+    final secColor = isDark
+        ? AppColors.textSecondary
+        : AppColors.lightTextSecondary;
+    final priColor = isDark
+        ? AppColors.textPrimary
+        : AppColors.lightTextPrimary;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label,
-            style: AppTextStyles.bodyMedium.copyWith(color: secColor)),
-        Text(value,
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: valueColor ?? priColor,
-              fontWeight: FontWeight.w600,
-            )),
+        Text(label, style: AppTextStyles.bodyMedium.copyWith(color: secColor)),
+        Text(
+          value,
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: valueColor ?? priColor,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ],
     );
   }
@@ -952,9 +1051,7 @@ class _NavGridBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox.expand(
-      child: CustomPaint(painter: _NavGridPainter()),
-    );
+    return SizedBox.expand(child: CustomPaint(painter: _NavGridPainter()));
   }
 }
 
@@ -1019,4 +1116,3 @@ String _fruitEmoji(String name) {
       return '🛒';
   }
 }
-

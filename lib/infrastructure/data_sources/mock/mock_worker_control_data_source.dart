@@ -11,8 +11,10 @@ class MockWorkerControlDataSource {
   Stream<StorageState> get storageStateStream => _storageController.stream;
 
   Future<void> sendTeleopCommand(TeleopCommand command) async {
-    logger.debug('Teleop: ${command.direction.name} | '
-        'linear=${command.linearSpeed}, angular=${command.angularSpeed}');
+    logger.debug(
+      'Teleop: ${command.direction.name} | '
+      'linear=${command.linearSpeed}, angular=${command.angularSpeed}',
+    );
   }
 
   Future<void> openStorage() async {
@@ -45,6 +47,10 @@ class MockWorkerControlDataSource {
   Future<void> setOfflineMode() async {
     await Future.delayed(const Duration(milliseconds: 200));
     logger.info('Robot set to OFFLINE');
+  }
+
+  Future<void> clearFaults() async {
+    logger.info('[Mock] Clear faults requested');
   }
 
   void dispose() {

@@ -7,5 +7,6 @@ abstract interface class WorkerControlRepository {
   Future<void> closeStorage();
   Future<void> setOnlineMode();
   Future<void> setOfflineMode();
+  Future<void> clearFaults();
   Stream<StorageState> watchStorageState();
 }
