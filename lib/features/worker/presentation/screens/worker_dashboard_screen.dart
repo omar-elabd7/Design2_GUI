@@ -97,18 +97,20 @@ class _WorkerDashboardScreenState extends ConsumerState<WorkerDashboardScreen>
                 // ── RIGHT ─────────────────────────────────────────────
                 Expanded(
                   flex: 45,
-                  child: Column(
-                    children: [
-                      _RobotStatusCard(pulseCtrl: _pulseCtrl),
-                      const SizedBox(height: 12),
-                      _BatteryCard(),
-                      const SizedBox(height: 12),
-                      _ActiveFaultsCard(),
-                      const SizedBox(height: 12),
-                      _RobotModeCard(),
-                      const SizedBox(height: 12),
-                      const _RecentActivityCard(),
-                    ],
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        _RobotStatusCard(pulseCtrl: _pulseCtrl),
+                        const SizedBox(height: 12),
+                        _BatteryCard(),
+                        const SizedBox(height: 12),
+                        _ActiveFaultsCard(),
+                        const SizedBox(height: 12),
+                        _RobotModeCard(),
+                        const SizedBox(height: 12),
+                        const _RecentActivityCard(),
+                      ],
+                    ),
                   ),
                 ),
               ],
