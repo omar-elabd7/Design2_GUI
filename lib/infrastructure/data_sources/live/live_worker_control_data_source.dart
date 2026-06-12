@@ -45,15 +45,29 @@ class LiveWorkerControlDataSource {
   // ── Storage state stream (via WS) ────────────────────────────────────────────
 
   Stream<StorageState> watchStorageState() {
-    return _ws.messages.where((m) => m['type'] == kWsRobotStorageState).map((
-      m,
-    ) {
-      final raw = m['state'] as String? ?? 'closed';
-      return StorageState.values.firstWhere(
-        (s) => s.name == raw,
-        orElse: () => StorageState.closed,
-      );
-    });
+    // Accept both explicit storage messages AND the heartbeat robot.status
+    // so the card reflects state immediately after HTTP open/close commands.
+    return _ws.messages
+        .where(
+          (m) =>
+              m['type'] == kWsRobotStorageState ||
+              m['type'] == 'robot.status' ||
+              m['type'] == 'storage.open' ||
+              m['type'] == 'storage.closed' ||
+              m['type'] == 'storage.status',
+        )
+        .map((m) {
+          String raw;
+          if (m['type'] == 'robot.status') {
+            raw = m['storage_state'] as String? ?? 'closed';
+          } else {
+            raw = m['state'] as String? ?? 'closed';
+          }
+          return StorageState.values.firstWhere(
+            (s) => s.name == raw,
+            orElse: () => StorageState.closed,
+          );
+        });
   }
 
   // ── helpers ──────────────────────────────────────────────────────────────────

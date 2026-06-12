@@ -224,39 +224,10 @@ class _ManualControlCardState extends ConsumerState<_ManualControlCard> {
     super.dispose();
   }
 
-  void _down(LogicalKeyboardKey k) {
-    final n = ref.read(teleopProvider.notifier);
-    if (k == LogicalKeyboardKey.keyW || k == LogicalKeyboardKey.arrowUp) {
-      n.startCommand(TeleopDirection.forward);
-    } else if (k == LogicalKeyboardKey.keyS ||
-        k == LogicalKeyboardKey.arrowDown) {
-      n.startCommand(TeleopDirection.backward);
-    } else if (k == LogicalKeyboardKey.keyA ||
-        k == LogicalKeyboardKey.arrowLeft) {
-      n.startCommand(TeleopDirection.left);
-    } else if (k == LogicalKeyboardKey.keyD ||
-        k == LogicalKeyboardKey.arrowRight) {
-      n.startCommand(TeleopDirection.right);
-    }
-  }
-
-  void _up(LogicalKeyboardKey k) {
-    final watched = {
-      LogicalKeyboardKey.keyW,
-      LogicalKeyboardKey.keyS,
-      LogicalKeyboardKey.keyA,
-      LogicalKeyboardKey.keyD,
-      LogicalKeyboardKey.arrowUp,
-      LogicalKeyboardKey.arrowDown,
-      LogicalKeyboardKey.arrowLeft,
-      LogicalKeyboardKey.arrowRight,
-    };
-    if (watched.contains(k)) ref.read(teleopProvider.notifier).stopCommand();
-  }
-
   @override
   Widget build(BuildContext context) {
     final dir = ref.watch(teleopProvider);
+    final n = ref.read(teleopProvider.notifier);
 
     return _Card(
       child: GestureDetector(
@@ -264,13 +235,13 @@ class _ManualControlCardState extends ConsumerState<_ManualControlCard> {
         child: KeyboardListener(
           focusNode: _focus,
           onKeyEvent: (e) {
-            if (e is KeyDownEvent) _down(e.logicalKey);
-            if (e is KeyUpEvent) _up(e.logicalKey);
+            if (e is KeyDownEvent) n.onKeyDown(e.logicalKey);
+            if (e is KeyUpEvent) n.onKeyUp(e.logicalKey);
           },
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // header
+              // ── header ────────────────────────────────────────────────
               Row(
                 children: [
                   const Icon(Icons.gamepad_rounded, color: _kGreen, size: 18),
@@ -281,7 +252,7 @@ class _ManualControlCardState extends ConsumerState<_ManualControlCard> {
                   ),
                   const Spacer(),
                   Text(
-                    'W A S D / Arrow Keys',
+                    'WASD · Q/E rotate · diagonals',
                     style: AppTextStyles.labelSmall.copyWith(
                       color: AppColors.textMuted,
                     ),
@@ -289,65 +260,115 @@ class _ManualControlCardState extends ConsumerState<_ManualControlCard> {
                 ],
               ),
               const SizedBox(height: 20),
-              // D-Pad
+
+              // ── control grid ──────────────────────────────────────────
               Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _DpadBtn(
-                      icon: Icons.arrow_upward_rounded,
-                      label: 'W',
-                      active: dir == TeleopDirection.forward,
-                      onDown: () => ref
-                          .read(teleopProvider.notifier)
-                          .startCommand(TeleopDirection.forward),
-                      onUp: () =>
-                          ref.read(teleopProvider.notifier).stopCommand(),
+                    // Row 1 : Q  | W  | E
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _DpadBtn(
+                          icon: Icons.rotate_left_rounded,
+                          label: 'Q',
+                          active: dir == TeleopDirection.rotateLeft,
+                          onDown: () =>
+                              n.startCommand(TeleopDirection.rotateLeft),
+                          onUp: () => n.stopCommand(),
+                        ),
+                        const SizedBox(width: 8),
+                        _DpadBtn(
+                          icon: Icons.arrow_upward_rounded,
+                          label: 'W',
+                          active:
+                              dir == TeleopDirection.forward ||
+                              dir == TeleopDirection.forwardLeft ||
+                              dir == TeleopDirection.forwardRight,
+                          onDown: () => n.startCommand(TeleopDirection.forward),
+                          onUp: () => n.stopCommand(),
+                        ),
+                        const SizedBox(width: 8),
+                        _DpadBtn(
+                          icon: Icons.rotate_right_rounded,
+                          label: 'E',
+                          active: dir == TeleopDirection.rotateRight,
+                          onDown: () =>
+                              n.startCommand(TeleopDirection.rotateRight),
+                          onUp: () => n.stopCommand(),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
+                    // Row 2 : A  | STOP | D
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _DpadBtn(
                           icon: Icons.arrow_back_rounded,
                           label: 'A',
-                          active: dir == TeleopDirection.left,
-                          onDown: () => ref
-                              .read(teleopProvider.notifier)
-                              .startCommand(TeleopDirection.left),
-                          onUp: () =>
-                              ref.read(teleopProvider.notifier).stopCommand(),
+                          active:
+                              dir == TeleopDirection.left ||
+                              dir == TeleopDirection.forwardLeft ||
+                              dir == TeleopDirection.backwardLeft,
+                          onDown: () => n.startCommand(TeleopDirection.left),
+                          onUp: () => n.stopCommand(),
                         ),
                         const SizedBox(width: 8),
-                        _StopBtn(
-                          onPressed: () =>
-                              ref.read(teleopProvider.notifier).stopCommand(),
-                        ),
+                        _StopBtn(onPressed: () => n.stopCommand()),
                         const SizedBox(width: 8),
                         _DpadBtn(
                           icon: Icons.arrow_forward_rounded,
                           label: 'D',
-                          active: dir == TeleopDirection.right,
-                          onDown: () => ref
-                              .read(teleopProvider.notifier)
-                              .startCommand(TeleopDirection.right),
-                          onUp: () =>
-                              ref.read(teleopProvider.notifier).stopCommand(),
+                          active:
+                              dir == TeleopDirection.right ||
+                              dir == TeleopDirection.forwardRight ||
+                              dir == TeleopDirection.backwardRight,
+                          onDown: () => n.startCommand(TeleopDirection.right),
+                          onUp: () => n.stopCommand(),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    _DpadBtn(
-                      icon: Icons.arrow_downward_rounded,
-                      label: 'S',
-                      active: dir == TeleopDirection.backward,
-                      onDown: () => ref
-                          .read(teleopProvider.notifier)
-                          .startCommand(TeleopDirection.backward),
-                      onUp: () =>
-                          ref.read(teleopProvider.notifier).stopCommand(),
+                    // Row 3 : (empty) | S | (empty)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(width: 76),
+                        _DpadBtn(
+                          icon: Icons.arrow_downward_rounded,
+                          label: 'S',
+                          active:
+                              dir == TeleopDirection.backward ||
+                              dir == TeleopDirection.backwardLeft ||
+                              dir == TeleopDirection.backwardRight,
+                          onDown: () =>
+                              n.startCommand(TeleopDirection.backward),
+                          onUp: () => n.stopCommand(),
+                        ),
+                        const SizedBox(width: 76),
+                      ],
                     ),
                   ],
+                ),
+              ),
+
+              // ── current direction label ───────────────────────────────
+              const SizedBox(height: 12),
+              Center(
+                child: Text(
+                  dir == TeleopDirection.stop
+                      ? '● STOPPED'
+                      : '▶ ${dir.name.replaceAllMapped(RegExp(r'[A-Z]'), (m) => ' ${m[0]}').toUpperCase().trim()}',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                    color: dir == TeleopDirection.stop
+                        ? AppColors.textMuted
+                        : _kGreen,
+                  ),
                 ),
               ),
             ],

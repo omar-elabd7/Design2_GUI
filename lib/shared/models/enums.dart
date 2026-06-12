@@ -45,4 +45,16 @@ enum FaultType {
   visionFailed,
 }
 
-enum TeleopDirection { forward, backward, left, right, stop }
+enum TeleopDirection {
+  forward,
+  backward,
+  left,
+  right,
+  forwardLeft,
+  forwardRight,
+  backwardLeft,
+  backwardRight,
+  rotateLeft,
+  rotateRight,
+  stop,
+}

@@ -967,6 +967,7 @@ async def open_storage(request: Request):
         "order_id": body.get("order_id", robot.active_order_id),
         "timestamp": _now(),
     })
+    await broadcast(robot.status_msg())
     return {"success": True, "storage_state": "open"}
 
 @app.post("/robot/storage/close")
@@ -978,6 +979,7 @@ async def close_storage():
         "order_id": robot.active_order_id,
         "timestamp": _now(),
     })
+    await broadcast(robot.status_msg())
     return {"success": True, "storage_state": "closed"}
 
 @app.get("/orders/{order_id}")
