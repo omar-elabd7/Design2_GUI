@@ -46,15 +46,28 @@ enum FaultType {
 }
 
 enum TeleopDirection {
+  // ── single axis ──────────────────────────────────────────
   forward,
   backward,
   left,
   right,
+  // ── diagonal (vx + vy) ───────────────────────────────────
   forwardLeft,
   forwardRight,
   backwardLeft,
   backwardRight,
+  // ── pure rotation ────────────────────────────────────────
   rotateLeft,
   rotateRight,
+  // ── linear + rotation (vx/vy + w) ───────────────────────
+  forwardRotateLeft, // W + Q
+  forwardRotateRight, // W + E
+  backwardRotateLeft, // S + Q
+  backwardRotateRight, // S + E
+  leftRotateLeft, // A + Q
+  leftRotateRight, // A + E
+  rightRotateLeft, // D + Q
+  rightRotateRight, // D + E
+  // ── stop ─────────────────────────────────────────────────
   stop,
 }

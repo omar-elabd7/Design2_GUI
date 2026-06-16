@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/providers/theme_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/extensions.dart';
@@ -9,12 +10,39 @@ import '../../../../shared/models/mission_update.dart';
 import '../../../robot_status/presentation/providers/robot_status_provider.dart';
 import '../../../robot_status/presentation/providers/mission_stream_provider.dart';
 
-// ─── palette (matches worker dashboard) ──────────────────────────────────────
+// ─── accent (same in both modes) ─────────────────────────────────────────────
 const _kGreen = Color(0xFF2ECC8E);
-const _kBg = Color(0xFF0A0F1A);
-const _kCard = Color(0xFF0F1825);
-const _kCardBorder = Color(0xFF1A2A3A);
-const _kCardBorderGreen = Color(0xFF1A3A2A);
+
+// ─── theme helpers ────────────────────────────────────────────────────────────
+Color _dbBg(bool d) => d ? const Color(0xFF0A0F1A) : AppColors.lightBackground;
+Color _dbCard(bool d) =>
+    d ? const Color(0xFF0F1825) : AppColors.lightCardBackground;
+Color _dbCardBorder(bool d) =>
+    d ? const Color(0xFF1A2A3A) : AppColors.lightCardBorder;
+Color _dbCardBorderGreen(bool d) =>
+    d ? const Color(0xFF1A3A2A) : const Color(0xFFB8E6D4);
+Color _dbInnerBg(bool d) =>
+    d ? const Color(0xFF060D14) : AppColors.lightBackgroundMid;
+Color _dbStatBg(bool d) =>
+    d ? const Color(0xFF08141E) : AppColors.lightInputFill;
+Color _dbTextPrimary(bool d) =>
+    d ? AppColors.textPrimary : AppColors.lightTextPrimary;
+Color _dbTextSecondary(bool d) =>
+    d ? AppColors.textSecondary : AppColors.lightTextSecondary;
+Color _dbTextMuted(bool d) =>
+    d ? AppColors.textMuted : AppColors.lightTextMuted;
+
+// ─── inherited theme propagation ─────────────────────────────────────────────
+class _DebugTheme extends InheritedWidget {
+  const _DebugTheme({required this.isDark, required super.child});
+  final bool isDark;
+
+  static bool of(BuildContext ctx) =>
+      ctx.dependOnInheritedWidgetOfExactType<_DebugTheme>()!.isDark;
+
+  @override
+  bool updateShouldNotify(_DebugTheme old) => old.isDark != isDark;
+}
 
 // =============================================================================
 //  DebugPanelScreen
@@ -48,52 +76,60 @@ class _DebugPanelScreenState extends ConsumerState<DebugPanelScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _kBg,
-      body: Stack(
-        children: [
-          // ── animated grid bg ─────────────────────────────────────────────
-          Positioned.fill(
-            child: AnimatedBuilder(
-              animation: _bgCtrl,
-              builder: (_, __) =>
-                  CustomPaint(painter: _DebugGridPainter(phase: _bgCtrl.value)),
-            ),
-          ),
-          // ── content ──────────────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _PageHeader(),
-                const SizedBox(height: 14),
-                Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // LEFT — raw state only
-                      Expanded(flex: 42, child: _RawStateCard()),
-                      const SizedBox(width: 12),
-                      // RIGHT — live status + event log
-                      Expanded(
-                        flex: 58,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _LiveStatusCard(),
-                            const SizedBox(height: 12),
-                            Expanded(child: _EventLogCard()),
-                          ],
-                        ),
-                      ),
-                    ],
+    final isDark = ref.watch(themeModeProvider);
+    return _DebugTheme(
+      isDark: isDark,
+      child: Scaffold(
+        backgroundColor: _dbBg(isDark),
+        body: Stack(
+          children: [
+            // ── animated grid bg ─────────────────────────────────────────────
+            Positioned.fill(
+              child: AnimatedBuilder(
+                animation: _bgCtrl,
+                builder: (_, __) => CustomPaint(
+                  painter: _DebugGridPainter(
+                    phase: _bgCtrl.value,
+                    isDark: isDark,
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-        ],
+            // ── content ──────────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _PageHeader(),
+                  const SizedBox(height: 14),
+                  Expanded(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // LEFT — raw state only
+                        Expanded(flex: 42, child: _RawStateCard()),
+                        const SizedBox(width: 12),
+                        // RIGHT — live status + event log
+                        Expanded(
+                          flex: 58,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _LiveStatusCard(),
+                              const SizedBox(height: 12),
+                              Expanded(child: _EventLogCard()),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -106,6 +142,7 @@ class _DebugPanelScreenState extends ConsumerState<DebugPanelScreen>
 class _PageHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final isDark = _DebugTheme.of(context);
     return Row(
       children: [
         Container(
@@ -139,7 +176,7 @@ class _PageHeader extends StatelessWidget {
               'Simulate robot events · inspect live state',
               style: TextStyle(
                 fontSize: 10,
-                color: AppColors.textMuted,
+                color: _dbTextMuted(isDark),
                 letterSpacing: 0.3,
               ),
             ),
@@ -198,6 +235,7 @@ class _PageHeader extends StatelessWidget {
 class _RawStateCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = _DebugTheme.of(context);
     final s = ref.watch(robotStatusProvider);
 
     final rows = [
@@ -207,13 +245,13 @@ class _RawStateCard extends ConsumerWidget {
         s.isConnected ? _kGreen : AppColors.danger,
       ),
       _KV('mode', s.mode.name, s.mode.color),
-      _KV('mission_state', s.missionState.name, AppColors.textSecondary),
+      _KV('mission_state', s.missionState.name, _dbTextSecondary(isDark)),
       _KV(
         'storage_state',
         s.storageState.name,
         s.storageState == StorageState.open
             ? AppColors.warning
-            : AppColors.textSecondary,
+            : _dbTextSecondary(isDark),
       ),
       _KV(
         'battery_pct',
@@ -223,7 +261,7 @@ class _RawStateCard extends ConsumerWidget {
       _KV(
         'fault',
         s.faultType == FaultType.none ? 'none' : s.faultType.name,
-        s.faultType != FaultType.none ? AppColors.danger : AppColors.textMuted,
+        s.faultType != FaultType.none ? AppColors.danger : _dbTextMuted(isDark),
       ),
     ];
 
@@ -231,19 +269,19 @@ class _RawStateCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _SectionHeader(
+          _SectionHeader(
             icon: Icons.data_object_rounded,
             label: 'Raw State',
-            accent: Color(0xFF42A5F5),
+            accent: const Color(0xFF42A5F5),
           ),
           const SizedBox(height: 10),
           Expanded(
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFF060D14),
+                color: _dbInnerBg(isDark),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: _kCardBorder),
+                border: Border.all(color: _dbCardBorder(isDark)),
               ),
               child: ListView(
                 padding: EdgeInsets.zero,
@@ -254,10 +292,10 @@ class _RawStateCard extends ConsumerWidget {
                       children: [
                         Text(
                           '${kv.key}:',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
                             fontFamily: 'monospace',
-                            color: AppColors.textMuted,
+                            color: _dbTextMuted(isDark),
                           ),
                         ),
                         const Spacer(),
@@ -297,6 +335,7 @@ class _KV {
 class _LiveStatusCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = _DebugTheme.of(context);
     final s = ref.watch(robotStatusProvider);
     final pct = s.batteryPercent;
     final batColor = pct < 20
@@ -311,7 +350,7 @@ class _LiveStatusCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _SectionHeader(
+          _SectionHeader(
             icon: Icons.monitor_heart_rounded,
             label: 'Live Status',
             accent: _kGreen,
@@ -331,7 +370,7 @@ class _LiveStatusCard extends ConsumerWidget {
                 child: _StatTile(
                   label: 'MISSION',
                   value: s.missionState.label,
-                  color: AppColors.textPrimary,
+                  color: _dbTextPrimary(isDark),
                 ),
               ),
               const SizedBox(width: 8),
@@ -341,7 +380,7 @@ class _LiveStatusCard extends ConsumerWidget {
                   value: s.storageState.label,
                   color: s.storageState == StorageState.open
                       ? AppColors.warning
-                      : AppColors.textSecondary,
+                      : _dbTextSecondary(isDark),
                 ),
               ),
             ],
@@ -357,9 +396,9 @@ class _LiveStatusCard extends ConsumerWidget {
                 size: 14,
               ),
               const SizedBox(width: 6),
-              const Text(
+              Text(
                 'Battery  ',
-                style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 11, color: _dbTextSecondary(isDark)),
               ),
               Expanded(
                 child: ClipRRect(
@@ -367,7 +406,7 @@ class _LiveStatusCard extends ConsumerWidget {
                   child: LinearProgressIndicator(
                     value: pct / 100,
                     minHeight: 7,
-                    backgroundColor: _kCardBorder,
+                    backgroundColor: _dbCardBorder(isDark),
                     valueColor: AlwaysStoppedAnimation<Color>(batColor),
                   ),
                 ),
@@ -433,22 +472,23 @@ class _StatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = _DebugTheme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF08141E),
+        color: _dbStatBg(isDark),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _kCardBorder),
+        border: Border.all(color: _dbCardBorder(isDark)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 9,
               fontWeight: FontWeight.w600,
-              color: AppColors.textMuted,
+              color: _dbTextMuted(isDark),
               letterSpacing: 0.8,
             ),
           ),
@@ -487,6 +527,7 @@ class _EventLogCardState extends ConsumerState<_EventLogCard> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = _DebugTheme.of(context);
     final updates = ref.watch(missionUpdatesProvider).asData?.value ?? const [];
 
     ref.listen(missionUpdatesProvider, (_, next) {
@@ -510,7 +551,7 @@ class _EventLogCardState extends ConsumerState<_EventLogCard> {
         children: [
           Row(
             children: [
-              const _SectionHeader(
+              _SectionHeader(
                 icon: Icons.terminal_rounded,
                 label: 'Mission Log',
                 accent: _kGreen,
@@ -538,9 +579,9 @@ class _EventLogCardState extends ConsumerState<_EventLogCard> {
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF060D14),
+                color: _dbInnerBg(isDark),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: _kCardBorder),
+                border: Border.all(color: _dbCardBorder(isDark)),
               ),
               padding: const EdgeInsets.all(10),
               child: updates.isEmpty
@@ -551,14 +592,14 @@ class _EventLogCardState extends ConsumerState<_EventLogCard> {
                           Icon(
                             Icons.receipt_long_outlined,
                             size: 28,
-                            color: AppColors.textMuted.withValues(alpha: 0.4),
+                            color: _dbTextMuted(isDark).withValues(alpha: 0.4),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             'Waiting for mission events...',
                             style: TextStyle(
                               fontSize: 11,
-                              color: AppColors.textMuted,
+                              color: _dbTextMuted(isDark),
                             ),
                           ),
                         ],
@@ -582,7 +623,7 @@ class _LogRow extends StatelessWidget {
   const _LogRow({required this.update});
   final MissionUpdate update;
 
-  Color _dotColor() {
+  Color _dotColor(bool isDark) {
     if (update.faultType != null && update.faultType != FaultType.none) {
       return AppColors.danger;
     }
@@ -600,14 +641,15 @@ class _LogRow extends StatelessWidget {
       case MissionState.failed:
         return AppColors.danger;
       default:
-        return AppColors.textSecondary;
+        return isDark ? AppColors.textSecondary : AppColors.lightTextSecondary;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = _DebugTheme.of(context);
     final time = DateFormat('HH:mm:ss').format(update.timestamp);
-    final color = _dotColor();
+    final color = _dotColor(isDark);
     final isFault =
         update.faultType != null && update.faultType != FaultType.none;
 
@@ -618,10 +660,10 @@ class _LogRow extends StatelessWidget {
         children: [
           Text(
             time,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
               fontFamily: 'monospace',
-              color: AppColors.textMuted,
+              color: _dbTextMuted(isDark),
             ),
           ),
           const SizedBox(width: 8),
@@ -645,7 +687,7 @@ class _LogRow extends StatelessWidget {
               update.message,
               style: TextStyle(
                 fontSize: 11,
-                color: isFault ? AppColors.danger : AppColors.textPrimary,
+                color: isFault ? AppColors.danger : _dbTextPrimary(isDark),
               ),
             ),
           ),
@@ -666,14 +708,17 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = _DebugTheme.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _kCard,
+        color: _dbCard(isDark),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: glowBorder ? _kCardBorderGreen : _kCardBorder,
+          color: glowBorder
+              ? _dbCardBorderGreen(isDark)
+              : _dbCardBorder(isDark),
           width: glowBorder ? 1.2 : 1,
         ),
         boxShadow: glowBorder
@@ -684,7 +729,15 @@ class _Card extends StatelessWidget {
                   spreadRadius: 1,
                 ),
               ]
-            : null,
+            : isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: child,
     );
@@ -703,12 +756,18 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = _DebugTheme.of(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, color: accent, size: 16),
         const SizedBox(width: 7),
-        Text(label, style: AppTextStyles.headlineSmall),
+        Text(
+          label,
+          style: AppTextStyles.headlineSmall.copyWith(
+            color: _dbTextPrimary(isDark),
+          ),
+        ),
       ],
     );
   }
@@ -719,15 +778,18 @@ class _SectionHeader extends StatelessWidget {
 // =============================================================================
 
 class _DebugGridPainter extends CustomPainter {
-  _DebugGridPainter({required this.phase});
+  _DebugGridPainter({required this.phase, required this.isDark});
   final double phase;
+  final bool isDark;
 
   @override
   void paint(Canvas canvas, Size size) {
     const step = 52.0;
 
     final linePaint = Paint()
-      ..color = const Color(0xFF1A1A0E).withValues(alpha: 0.6)
+      ..color = isDark
+          ? const Color(0xFF1A1A0E).withValues(alpha: 0.6)
+          : const Color(0xFFE8E4D8).withValues(alpha: 0.9)
       ..strokeWidth = 0.6;
     for (double x = 0; x < size.width; x += step) {
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), linePaint);
@@ -736,7 +798,8 @@ class _DebugGridPainter extends CustomPainter {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), linePaint);
     }
 
-    final dotPaint = Paint()..color = AppColors.warning.withValues(alpha: 0.05);
+    final dotPaint = Paint()
+      ..color = AppColors.warning.withValues(alpha: isDark ? 0.05 : 0.10);
     for (double x = 0; x < size.width; x += step) {
       for (double y = 0; y < size.height; y += step) {
         canvas.drawCircle(Offset(x, y), 1.4, dotPaint);
@@ -748,7 +811,7 @@ class _DebugGridPainter extends CustomPainter {
       ..shader = LinearGradient(
         colors: [
           Colors.transparent,
-          AppColors.warning.withValues(alpha: 0.03),
+          AppColors.warning.withValues(alpha: isDark ? 0.03 : 0.02),
           Colors.transparent,
         ],
       ).createShader(Rect.fromLTWH(sweepX - 120, 0, 240, size.height));
@@ -758,7 +821,7 @@ class _DebugGridPainter extends CustomPainter {
       ..shader =
           RadialGradient(
             colors: [
-              AppColors.warning.withValues(alpha: 0.04),
+              AppColors.warning.withValues(alpha: isDark ? 0.04 : 0.03),
               Colors.transparent,
             ],
           ).createShader(
@@ -771,5 +834,6 @@ class _DebugGridPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_DebugGridPainter old) => old.phase != phase;
+  bool shouldRepaint(_DebugGridPainter old) =>
+      old.phase != phase || old.isDark != isDark;
 }

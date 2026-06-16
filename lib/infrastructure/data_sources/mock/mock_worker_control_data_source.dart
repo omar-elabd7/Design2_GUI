@@ -13,7 +13,7 @@ class MockWorkerControlDataSource {
   Future<void> sendTeleopCommand(TeleopCommand command) async {
     logger.debug(
       'Teleop: ${command.direction.name} | '
-      'linear=${command.linearSpeed}, angular=${command.angularSpeed}',
+      'vx=${command.vx}, vy=${command.vy}, w=${command.w}',
     );
   }
 

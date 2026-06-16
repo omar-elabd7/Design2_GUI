@@ -13,10 +13,6 @@ class TeleopNotifier extends StateNotifier<TeleopDirection> {
   Timer? _sendTimer;
   final Set<LogicalKeyboardKey> _held = {};
 
-  static const double _lin = 0.3;
-  static const double _linDiag = 0.212; // 0.3 / sqrt(2)
-  static const double _ang = 0.5;
-
   /// Called on every KeyDownEvent / KeyUpEvent from the UI.
   void onKeyDown(LogicalKeyboardKey k) {
     _held.add(k);
@@ -45,7 +41,25 @@ class TeleopNotifier extends StateNotifier<TeleopDirection> {
     final e = _held.contains(LogicalKeyboardKey.keyE);
 
     TeleopDirection dir;
-    if (w && a && !s && !d) {
+    // ── linear + rotation combos (checked first) ──────────────────────
+    if (w && q && !s) {
+      dir = TeleopDirection.forwardRotateLeft;
+    } else if (w && e && !s) {
+      dir = TeleopDirection.forwardRotateRight;
+    } else if (s && q && !w) {
+      dir = TeleopDirection.backwardRotateLeft;
+    } else if (s && e && !w) {
+      dir = TeleopDirection.backwardRotateRight;
+    } else if (a && q && !d) {
+      dir = TeleopDirection.leftRotateLeft;
+    } else if (a && e && !d) {
+      dir = TeleopDirection.leftRotateRight;
+    } else if (d && q && !a) {
+      dir = TeleopDirection.rightRotateLeft;
+    } else if (d && e && !a) {
+      dir = TeleopDirection.rightRotateRight;
+      // ── diagonal (vx + vy) ────────────────────────────────────────────
+    } else if (w && a && !s && !d) {
       dir = TeleopDirection.forwardLeft;
     } else if (w && d && !s && !a) {
       dir = TeleopDirection.forwardRight;
@@ -53,6 +67,7 @@ class TeleopNotifier extends StateNotifier<TeleopDirection> {
       dir = TeleopDirection.backwardLeft;
     } else if (s && d && !w && !a) {
       dir = TeleopDirection.backwardRight;
+      // ── single axis ───────────────────────────────────────────────────
     } else if (w && !s) {
       dir = TeleopDirection.forward;
     } else if (s && !w) {
@@ -103,41 +118,64 @@ class TeleopNotifier extends StateNotifier<TeleopDirection> {
   }
 
   void _sendCommand(TeleopDirection direction) {
-    double lin = 0.0;
-    double ang = 0.0;
+    int vx = 0, vy = 0, w = 0;
     switch (direction) {
+      // ── single axis ────────────────────────────────────────────────
       case TeleopDirection.forward:
-        lin = _lin;
+        vx = 1;
       case TeleopDirection.backward:
-        lin = -_lin;
+        vx = -1;
       case TeleopDirection.left:
-        ang = _ang;
+        vy = -1;
       case TeleopDirection.right:
-        ang = -_ang;
+        vy = 1;
+      // ── diagonal ───────────────────────────────────────────────────
       case TeleopDirection.forwardLeft:
-        lin = _linDiag;
-        ang = _ang;
+        vx = 1;
+        vy = -1;
       case TeleopDirection.forwardRight:
-        lin = _linDiag;
-        ang = -_ang;
+        vx = 1;
+        vy = 1;
       case TeleopDirection.backwardLeft:
-        lin = -_linDiag;
-        ang = _ang;
+        vx = -1;
+        vy = -1;
       case TeleopDirection.backwardRight:
-        lin = -_linDiag;
-        ang = -_ang;
+        vx = -1;
+        vy = 1;
+      // ── pure rotation ──────────────────────────────────────────────
       case TeleopDirection.rotateLeft:
-        ang = _ang;
+        w = -1;
       case TeleopDirection.rotateRight:
-        ang = -_ang;
+        w = 1;
+      // ── linear + rotation ──────────────────────────────────────────
+      case TeleopDirection.forwardRotateLeft:
+        vx = 1;
+        w = -1;
+      case TeleopDirection.forwardRotateRight:
+        vx = 1;
+        w = 1;
+      case TeleopDirection.backwardRotateLeft:
+        vx = -1;
+        w = -1;
+      case TeleopDirection.backwardRotateRight:
+        vx = -1;
+        w = 1;
+      case TeleopDirection.leftRotateLeft:
+        vy = -1;
+        w = -1;
+      case TeleopDirection.leftRotateRight:
+        vy = -1;
+        w = 1;
+      case TeleopDirection.rightRotateLeft:
+        vy = 1;
+        w = -1;
+      case TeleopDirection.rightRotateRight:
+        vy = 1;
+        w = 1;
       case TeleopDirection.stop:
         break;
     }
-    final command = TeleopCommand(
-      direction: direction,
-      linearSpeed: lin,
-      angularSpeed: ang,
-    );
+    final command = TeleopCommand(direction: direction, vx: vx, vy: vy, w: w);
     _ref.read(workerControlRepositoryProvider).sendTeleopCommand(command);
   }
 

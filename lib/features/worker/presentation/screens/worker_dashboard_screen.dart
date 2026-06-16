@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/providers/theme_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/extensions.dart';
@@ -13,12 +14,35 @@ import '../../../robot_status/presentation/providers/robot_status_provider.dart'
 import '../providers/teleop_provider.dart';
 import '../providers/worker_control_provider.dart';
 
-// ─── palette ──────────────────────────────────────────────────────────────────
+// ─── accent (same in both modes) ─────────────────────────────────────────────
 const _kGreen = Color(0xFF2ECC8E);
-const _kBg = Color(0xFF0A0F1A);
-const _kCard = Color(0xFF0F1825);
-const _kCardBorder = Color(0xFF1A2A3A);
-const _kCardBorderGreen = Color(0xFF1A3A2A);
+
+// ─── palette helpers ─────────────────────────────────────────────────────────
+Color _bg(bool d) => d ? const Color(0xFF0A0F1A) : AppColors.lightBackground;
+Color _card(bool d) =>
+    d ? const Color(0xFF0F1825) : AppColors.lightCardBackground;
+Color _cardBorder(bool d) =>
+    d ? const Color(0xFF1A2A3A) : AppColors.lightCardBorder;
+Color _cardBorderGreen(bool d) =>
+    d ? const Color(0xFF1A3A2A) : const Color(0xFFB8E6D4);
+Color _btnBase(bool d) => d ? const Color(0xFF0D1F2D) : const Color(0xFFEDF2F7);
+Color _textPrimary(bool d) =>
+    d ? AppColors.textPrimary : AppColors.lightTextPrimary;
+Color _textSecondary(bool d) =>
+    d ? AppColors.textSecondary : AppColors.lightTextSecondary;
+Color _textMuted(bool d) => d ? AppColors.textMuted : AppColors.lightTextMuted;
+
+// ─── inherited theme propagation ─────────────────────────────────────────────
+class _DashTheme extends InheritedWidget {
+  const _DashTheme({required this.isDark, required super.child});
+  final bool isDark;
+
+  static bool of(BuildContext ctx) =>
+      ctx.dependOnInheritedWidgetOfExactType<_DashTheme>()!.isDark;
+
+  @override
+  bool updateShouldNotify(_DashTheme old) => old.isDark != isDark;
+}
 
 // =============================================================================
 //  WorkerDashboardScreen
@@ -59,64 +83,71 @@ class _WorkerDashboardScreenState extends ConsumerState<WorkerDashboardScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _kBg,
-      body: Stack(
-        children: [
-          // ── animated background ──────────────────────────────────────────
-          Positioned.fill(
-            child: AnimatedBuilder(
-              animation: _bgCtrl,
-              builder: (_, __) => CustomPaint(
-                painter: _WorkerGridPainter(phase: _bgCtrl.value),
-              ),
-            ),
-          ),
-
-          // ── content ──────────────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── LEFT ──────────────────────────────────────────────
-                Expanded(
-                  flex: 55,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _ManualControlCard(pulseCtrl: _pulseCtrl),
-                      const SizedBox(height: 12),
-                      _StorageCard(),
-                      const SizedBox(height: 12),
-                      Expanded(child: const _EventLogCard()),
-                    ],
+    final isDark = ref.watch(themeModeProvider);
+    return _DashTheme(
+      isDark: isDark,
+      child: Scaffold(
+        backgroundColor: _bg(isDark),
+        body: Stack(
+          children: [
+            // ── animated background ──────────────────────────────────────────
+            Positioned.fill(
+              child: AnimatedBuilder(
+                animation: _bgCtrl,
+                builder: (_, __) => CustomPaint(
+                  painter: _WorkerGridPainter(
+                    phase: _bgCtrl.value,
+                    isDark: isDark,
                   ),
                 ),
-                const SizedBox(width: 12),
-                // ── RIGHT ─────────────────────────────────────────────
-                Expanded(
-                  flex: 45,
-                  child: SingleChildScrollView(
+              ),
+            ),
+
+            // ── content ──────────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── LEFT ──────────────────────────────────────────────
+                  Expanded(
+                    flex: 55,
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _RobotStatusCard(pulseCtrl: _pulseCtrl),
+                        _ManualControlCard(pulseCtrl: _pulseCtrl),
                         const SizedBox(height: 12),
-                        _BatteryCard(),
+                        _StorageCard(),
                         const SizedBox(height: 12),
-                        _ActiveFaultsCard(),
-                        const SizedBox(height: 12),
-                        _RobotModeCard(),
-                        const SizedBox(height: 12),
-                        const _RecentActivityCard(),
+                        Expanded(child: const _EventLogCard()),
                       ],
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 12),
+                  // ── RIGHT ─────────────────────────────────────────────
+                  Expanded(
+                    flex: 45,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          _RobotStatusCard(pulseCtrl: _pulseCtrl),
+                          const SizedBox(height: 12),
+                          _BatteryCard(),
+                          const SizedBox(height: 12),
+                          _ActiveFaultsCard(),
+                          const SizedBox(height: 12),
+                          _RobotModeCard(),
+                          const SizedBox(height: 12),
+                          const _RecentActivityCard(),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -127,8 +158,9 @@ class _WorkerDashboardScreenState extends ConsumerState<WorkerDashboardScreen>
 // =============================================================================
 
 class _WorkerGridPainter extends CustomPainter {
-  _WorkerGridPainter({required this.phase});
+  _WorkerGridPainter({required this.phase, required this.isDark});
   final double phase;
+  final bool isDark;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -136,7 +168,9 @@ class _WorkerGridPainter extends CustomPainter {
 
     // grid lines
     final linePaint = Paint()
-      ..color = const Color(0xFF0E2A1A).withValues(alpha: 0.7)
+      ..color = isDark
+          ? const Color(0xFF0E2A1A).withValues(alpha: 0.7)
+          : const Color(0xFFDDE9E3).withValues(alpha: 0.9)
       ..strokeWidth = 0.6;
     for (double x = 0; x < size.width; x += step) {
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), linePaint);
@@ -146,7 +180,8 @@ class _WorkerGridPainter extends CustomPainter {
     }
 
     // junction dots
-    final dotPaint = Paint()..color = _kGreen.withValues(alpha: 0.07);
+    final dotPaint = Paint()
+      ..color = _kGreen.withValues(alpha: isDark ? 0.07 : 0.12);
     for (double x = 0; x < size.width; x += step) {
       for (double y = 0; y < size.height; y += step) {
         canvas.drawCircle(Offset(x, y), 1.4, dotPaint);
@@ -159,7 +194,7 @@ class _WorkerGridPainter extends CustomPainter {
       ..shader = LinearGradient(
         colors: [
           Colors.transparent,
-          _kGreen.withValues(alpha: 0.055),
+          _kGreen.withValues(alpha: isDark ? 0.055 : 0.04),
           Colors.transparent,
         ],
       ).createShader(Rect.fromLTWH(sweepX - 120, 0, 240, size.height));
@@ -173,7 +208,7 @@ class _WorkerGridPainter extends CustomPainter {
         end: Alignment.bottomCenter,
         colors: [
           Colors.transparent,
-          _kGreen.withValues(alpha: 0.03),
+          _kGreen.withValues(alpha: isDark ? 0.03 : 0.02),
           Colors.transparent,
         ],
       ).createShader(Rect.fromLTWH(0, sweepY - 90, size.width, 180));
@@ -183,7 +218,10 @@ class _WorkerGridPainter extends CustomPainter {
     final rPaint = Paint()
       ..shader =
           RadialGradient(
-            colors: [_kGreen.withValues(alpha: 0.06), Colors.transparent],
+            colors: [
+              _kGreen.withValues(alpha: isDark ? 0.06 : 0.04),
+              Colors.transparent,
+            ],
           ).createShader(
             Rect.fromCircle(
               center: Offset(0, size.height),
@@ -194,7 +232,8 @@ class _WorkerGridPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_WorkerGridPainter old) => old.phase != phase;
+  bool shouldRepaint(_WorkerGridPainter old) =>
+      old.phase != phase || old.isDark != isDark;
 }
 
 // =============================================================================
@@ -228,6 +267,7 @@ class _ManualControlCardState extends ConsumerState<_ManualControlCard> {
   Widget build(BuildContext context) {
     final dir = ref.watch(teleopProvider);
     final n = ref.read(teleopProvider.notifier);
+    final isDark = _DashTheme.of(context);
 
     return _Card(
       child: GestureDetector(
@@ -246,15 +286,17 @@ class _ManualControlCardState extends ConsumerState<_ManualControlCard> {
                 children: [
                   const Icon(Icons.gamepad_rounded, color: _kGreen, size: 18),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'Manual Control',
-                    style: AppTextStyles.headlineSmall,
+                    style: AppTextStyles.headlineSmall.copyWith(
+                      color: _textPrimary(isDark),
+                    ),
                   ),
                   const Spacer(),
                   Text(
                     'WASD · Q/E rotate · diagonals',
                     style: AppTextStyles.labelSmall.copyWith(
-                      color: AppColors.textMuted,
+                      color: _textMuted(isDark),
                     ),
                   ),
                 ],
@@ -273,7 +315,12 @@ class _ManualControlCardState extends ConsumerState<_ManualControlCard> {
                         _DpadBtn(
                           icon: Icons.rotate_left_rounded,
                           label: 'Q',
-                          active: dir == TeleopDirection.rotateLeft,
+                          active:
+                              dir == TeleopDirection.rotateLeft ||
+                              dir == TeleopDirection.forwardRotateLeft ||
+                              dir == TeleopDirection.backwardRotateLeft ||
+                              dir == TeleopDirection.leftRotateLeft ||
+                              dir == TeleopDirection.rightRotateLeft,
                           onDown: () =>
                               n.startCommand(TeleopDirection.rotateLeft),
                           onUp: () => n.stopCommand(),
@@ -285,7 +332,9 @@ class _ManualControlCardState extends ConsumerState<_ManualControlCard> {
                           active:
                               dir == TeleopDirection.forward ||
                               dir == TeleopDirection.forwardLeft ||
-                              dir == TeleopDirection.forwardRight,
+                              dir == TeleopDirection.forwardRight ||
+                              dir == TeleopDirection.forwardRotateLeft ||
+                              dir == TeleopDirection.forwardRotateRight,
                           onDown: () => n.startCommand(TeleopDirection.forward),
                           onUp: () => n.stopCommand(),
                         ),
@@ -293,7 +342,12 @@ class _ManualControlCardState extends ConsumerState<_ManualControlCard> {
                         _DpadBtn(
                           icon: Icons.rotate_right_rounded,
                           label: 'E',
-                          active: dir == TeleopDirection.rotateRight,
+                          active:
+                              dir == TeleopDirection.rotateRight ||
+                              dir == TeleopDirection.forwardRotateRight ||
+                              dir == TeleopDirection.backwardRotateRight ||
+                              dir == TeleopDirection.leftRotateRight ||
+                              dir == TeleopDirection.rightRotateRight,
                           onDown: () =>
                               n.startCommand(TeleopDirection.rotateRight),
                           onUp: () => n.stopCommand(),
@@ -311,7 +365,9 @@ class _ManualControlCardState extends ConsumerState<_ManualControlCard> {
                           active:
                               dir == TeleopDirection.left ||
                               dir == TeleopDirection.forwardLeft ||
-                              dir == TeleopDirection.backwardLeft,
+                              dir == TeleopDirection.backwardLeft ||
+                              dir == TeleopDirection.leftRotateLeft ||
+                              dir == TeleopDirection.leftRotateRight,
                           onDown: () => n.startCommand(TeleopDirection.left),
                           onUp: () => n.stopCommand(),
                         ),
@@ -324,7 +380,9 @@ class _ManualControlCardState extends ConsumerState<_ManualControlCard> {
                           active:
                               dir == TeleopDirection.right ||
                               dir == TeleopDirection.forwardRight ||
-                              dir == TeleopDirection.backwardRight,
+                              dir == TeleopDirection.backwardRight ||
+                              dir == TeleopDirection.rightRotateLeft ||
+                              dir == TeleopDirection.rightRotateRight,
                           onDown: () => n.startCommand(TeleopDirection.right),
                           onUp: () => n.stopCommand(),
                         ),
@@ -342,7 +400,9 @@ class _ManualControlCardState extends ConsumerState<_ManualControlCard> {
                           active:
                               dir == TeleopDirection.backward ||
                               dir == TeleopDirection.backwardLeft ||
-                              dir == TeleopDirection.backwardRight,
+                              dir == TeleopDirection.backwardRight ||
+                              dir == TeleopDirection.backwardRotateLeft ||
+                              dir == TeleopDirection.backwardRotateRight,
                           onDown: () =>
                               n.startCommand(TeleopDirection.backward),
                           onUp: () => n.stopCommand(),
@@ -366,7 +426,7 @@ class _ManualControlCardState extends ConsumerState<_ManualControlCard> {
                     fontWeight: FontWeight.w700,
                     letterSpacing: 1.2,
                     color: dir == TeleopDirection.stop
-                        ? AppColors.textMuted
+                        ? _textMuted(isDark)
                         : _kGreen,
                   ),
                 ),
@@ -395,6 +455,7 @@ class _DpadBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = _DashTheme.of(context);
     return GestureDetector(
       onTapDown: (_) => onDown(),
       onTapUp: (_) => onUp(),
@@ -404,12 +465,10 @@ class _DpadBtn extends StatelessWidget {
         width: 68,
         height: 68,
         decoration: BoxDecoration(
-          color: active
-              ? _kGreen.withValues(alpha: 0.18)
-              : const Color(0xFF0D1F2D),
+          color: active ? _kGreen.withValues(alpha: 0.18) : _btnBase(isDark),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: active ? _kGreen : _kCardBorder,
+            color: active ? _kGreen : _cardBorder(isDark),
             width: active ? 1.8 : 1,
           ),
           boxShadow: active
@@ -427,7 +486,7 @@ class _DpadBtn extends StatelessWidget {
           children: [
             Icon(
               icon,
-              color: active ? _kGreen : AppColors.textSecondary,
+              color: active ? _kGreen : _textSecondary(isDark),
               size: 24,
             ),
             const SizedBox(height: 2),
@@ -436,7 +495,7 @@ class _DpadBtn extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
-                color: active ? _kGreen : AppColors.textMuted,
+                color: active ? _kGreen : _textMuted(isDark),
               ),
             ),
           ],
@@ -499,6 +558,7 @@ class _StopBtn extends StatelessWidget {
 class _StorageCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = _DashTheme.of(context);
     final storageAsync = ref.watch(workerStorageStateProvider);
     final state = storageAsync.asData?.value ?? StorageState.closed;
     final isOpen = state == StorageState.open;
@@ -513,9 +573,11 @@ class _StorageCard extends ConsumerWidget {
             children: [
               const Icon(Icons.inventory_2_rounded, color: _kGreen, size: 18),
               const SizedBox(width: 8),
-              const Text(
+              Text(
                 'Storage Compartment',
-                style: AppTextStyles.headlineSmall,
+                style: AppTextStyles.headlineSmall.copyWith(
+                  color: _textPrimary(isDark),
+                ),
               ),
               const Spacer(),
               _StateChip(
@@ -524,7 +586,7 @@ class _StorageCard extends ConsumerWidget {
                     ? AppColors.warning
                     : state == StorageState.fault
                     ? AppColors.danger
-                    : AppColors.textSecondary,
+                    : _textSecondary(isDark),
               ),
             ],
           ),
@@ -557,18 +619,20 @@ class _StorageCard extends ConsumerWidget {
                     width: 130,
                     height: 65,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0B1820),
+                      color: isDark
+                          ? const Color(0xFF0B1820)
+                          : AppColors.lightInputFill,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                         color: isOpen
                             ? _kGreen.withValues(alpha: 0.6)
-                            : _kCardBorder,
+                            : _cardBorder(isDark),
                         width: 1.5,
                       ),
                     ),
                     child: Icon(
                       isOpen ? Icons.lock_open_rounded : Icons.lock_rounded,
-                      color: isOpen ? _kGreen : AppColors.textSecondary,
+                      color: isOpen ? _kGreen : _textSecondary(isDark),
                       size: 28,
                     ),
                   ),
@@ -627,6 +691,7 @@ class _RobotStatusCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = _DashTheme.of(context);
     final status = ref.watch(robotStatusProvider);
 
     return _Card(
@@ -647,9 +712,11 @@ class _RobotStatusCard extends ConsumerWidget {
                       size: 18,
                     ),
                     const SizedBox(width: 8),
-                    const Text(
+                    Text(
                       'Robot Status',
-                      style: AppTextStyles.headlineSmall,
+                      style: AppTextStyles.headlineSmall.copyWith(
+                        color: _textPrimary(isDark),
+                      ),
                     ),
                   ],
                 ),
@@ -665,7 +732,7 @@ class _RobotStatusCard extends ConsumerWidget {
                   icon: Icons.flag_rounded,
                   label: 'Mission',
                   value: status.missionState.label,
-                  valueColor: AppColors.textPrimary,
+                  valueColor: _textPrimary(isDark),
                 ),
                 const SizedBox(height: 10),
                 _StatusRow(
@@ -674,7 +741,7 @@ class _RobotStatusCard extends ConsumerWidget {
                   value: status.storageState.label,
                   valueColor: status.storageState == StorageState.open
                       ? AppColors.warning
-                      : AppColors.textSecondary,
+                      : _textSecondary(isDark),
                 ),
               ],
             ),
@@ -731,14 +798,15 @@ class _StatusRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = _DashTheme.of(context);
     return Row(
       children: [
-        Icon(icon, size: 13, color: AppColors.textMuted),
+        Icon(icon, size: 13, color: _textMuted(isDark)),
         const SizedBox(width: 6),
         Text(
           label,
           style: AppTextStyles.bodySmall.copyWith(
-            color: AppColors.textSecondary,
+            color: _textSecondary(isDark),
           ),
         ),
         const Spacer(),
@@ -746,7 +814,7 @@ class _StatusRow extends StatelessWidget {
           value,
           style: AppTextStyles.bodySmall.copyWith(
             fontWeight: FontWeight.w700,
-            color: valueColor ?? AppColors.textPrimary,
+            color: valueColor ?? _textPrimary(isDark),
           ),
         ),
       ],
@@ -761,6 +829,7 @@ class _StatusRow extends StatelessWidget {
 class _BatteryCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = _DashTheme.of(context);
     final status = ref.watch(robotStatusProvider);
     final pct = status.batteryPercent;
     final isCrit = Helpers.isBatteryCritical(pct);
@@ -788,7 +857,12 @@ class _BatteryCard extends ConsumerWidget {
                 size: 18,
               ),
               const SizedBox(width: 8),
-              const Text('Battery', style: AppTextStyles.headlineSmall),
+              Text(
+                'Battery',
+                style: AppTextStyles.headlineSmall.copyWith(
+                  color: _textPrimary(isDark),
+                ),
+              ),
               const Spacer(),
               if (isCrit)
                 _StateChip(label: 'CRITICAL', color: AppColors.danger)
@@ -812,7 +886,7 @@ class _BatteryCard extends ConsumerWidget {
               Text(
                 'Estimated runtime: ${h}h ${m}m',
                 style: AppTextStyles.labelSmall.copyWith(
-                  color: AppColors.textMuted,
+                  color: _textMuted(isDark),
                 ),
               ),
             ],
@@ -823,7 +897,7 @@ class _BatteryCard extends ConsumerWidget {
             child: LinearProgressIndicator(
               value: pct / 100,
               minHeight: 8,
-              backgroundColor: _kCardBorder,
+              backgroundColor: _cardBorder(isDark),
               valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
           ),
@@ -840,6 +914,7 @@ class _BatteryCard extends ConsumerWidget {
 class _RobotModeCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = _DashTheme.of(context);
     final mode = ref.watch(workerControlProvider);
 
     return _Card(
@@ -850,7 +925,12 @@ class _RobotModeCard extends ConsumerWidget {
             children: [
               const Icon(Icons.tune_rounded, color: _kGreen, size: 18),
               const SizedBox(width: 8),
-              const Text('Robot Mode', style: AppTextStyles.headlineSmall),
+              Text(
+                'Robot Mode',
+                style: AppTextStyles.headlineSmall.copyWith(
+                  color: _textPrimary(isDark),
+                ),
+              ),
               const Spacer(),
               _StateChip(label: mode.label, color: mode.color),
             ],
@@ -922,6 +1002,7 @@ class _ModeBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = _DashTheme.of(context);
     final accent = danger
         ? AppColors.danger
         : secondary
@@ -935,12 +1016,12 @@ class _ModeBtn extends StatelessWidget {
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: active
-                ? accent.withValues(alpha: 0.15)
-                : const Color(0xFF0D1F2D),
+            color: active ? accent.withValues(alpha: 0.15) : _btnBase(isDark),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: active ? accent.withValues(alpha: 0.7) : _kCardBorder,
+              color: active
+                  ? accent.withValues(alpha: 0.7)
+                  : _cardBorder(isDark),
               width: active ? 1.5 : 1,
             ),
           ),
@@ -950,7 +1031,7 @@ class _ModeBtn extends StatelessWidget {
               Icon(
                 icon,
                 size: 15,
-                color: active ? accent : AppColors.textSecondary,
+                color: active ? accent : _textSecondary(isDark),
               ),
               const SizedBox(width: 5),
               Text(
@@ -958,7 +1039,7 @@ class _ModeBtn extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                  color: active ? accent : AppColors.textSecondary,
+                  color: active ? accent : _textSecondary(isDark),
                 ),
               ),
             ],
@@ -976,6 +1057,7 @@ class _ModeBtn extends StatelessWidget {
 class _ActiveFaultsCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = _DashTheme.of(context);
     final status = ref.watch(robotStatusProvider);
     final fault = status.faultType;
     final hasFault = fault != FaultType.none;
@@ -1001,7 +1083,12 @@ class _ActiveFaultsCard extends ConsumerWidget {
                 size: 18,
               ),
               const SizedBox(width: 8),
-              const Text('Active Faults', style: AppTextStyles.headlineSmall),
+              Text(
+                'Active Faults',
+                style: AppTextStyles.headlineSmall.copyWith(
+                  color: _textPrimary(isDark),
+                ),
+              ),
               const Spacer(),
               if (hasFault)
                 _StateChip(
@@ -1025,7 +1112,7 @@ class _ActiveFaultsCard extends ConsumerWidget {
                 Text(
                   'No active faults',
                   style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
+                    color: _textSecondary(isDark),
                   ),
                 ),
               ],
@@ -1074,7 +1161,7 @@ class _ActiveFaultsCard extends ConsumerWidget {
                               ? 'New orders are blocked until cleared'
                               : 'Robot may have limited capability',
                           style: AppTextStyles.labelSmall.copyWith(
-                            color: AppColors.textMuted,
+                            color: _textMuted(isDark),
                           ),
                         ),
                       ],
@@ -1113,6 +1200,7 @@ class _RecentActivityCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = _DashTheme.of(context);
     final status = ref.watch(robotStatusProvider);
 
     // Build activity list from live state
@@ -1135,7 +1223,7 @@ class _RecentActivityCard extends ConsumerWidget {
         label: 'Storage ${status.storageState.label.toLowerCase()}',
         color: status.storageState == StorageState.open
             ? AppColors.warning
-            : AppColors.textSecondary,
+            : _textSecondary(isDark),
         time: 'live',
       ),
       _ActivityItem(
@@ -1153,7 +1241,12 @@ class _RecentActivityCard extends ConsumerWidget {
             children: [
               const Icon(Icons.history_rounded, color: _kGreen, size: 18),
               const SizedBox(width: 8),
-              const Text('Recent Activity', style: AppTextStyles.headlineSmall),
+              Text(
+                'Recent Activity',
+                style: AppTextStyles.headlineSmall.copyWith(
+                  color: _textPrimary(isDark),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -1175,14 +1268,14 @@ class _RecentActivityCard extends ConsumerWidget {
                     child: Text(
                       item.label,
                       style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
+                        color: _textSecondary(isDark),
                       ),
                     ),
                   ),
                   Text(
                     item.time,
                     style: AppTextStyles.labelSmall.copyWith(
-                      color: AppColors.textMuted,
+                      color: _textMuted(isDark),
                     ),
                   ),
                   Container(
@@ -1237,6 +1330,7 @@ class _EventLogCardState extends ConsumerState<_EventLogCard> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = _DashTheme.of(context);
     final updates = ref.watch(missionUpdatesProvider).asData?.value ?? const [];
 
     // Auto-scroll to bottom when new events arrive
@@ -1264,7 +1358,12 @@ class _EventLogCardState extends ConsumerState<_EventLogCard> {
             children: [
               const Icon(Icons.terminal_rounded, color: _kGreen, size: 18),
               const SizedBox(width: 8),
-              const Text('Robot Event Log', style: AppTextStyles.headlineSmall),
+              Text(
+                'Robot Event Log',
+                style: AppTextStyles.headlineSmall.copyWith(
+                  color: _textPrimary(isDark),
+                ),
+              ),
               const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -1295,13 +1394,13 @@ class _EventLogCardState extends ConsumerState<_EventLogCard> {
                         Icon(
                           Icons.receipt_long_outlined,
                           size: 28,
-                          color: AppColors.textMuted.withValues(alpha: 0.5),
+                          color: _textMuted(isDark).withValues(alpha: 0.5),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           'Waiting for robot events...',
                           style: AppTextStyles.bodySmall.copyWith(
-                            color: AppColors.textMuted,
+                            color: _textMuted(isDark),
                           ),
                         ),
                       ],
@@ -1350,6 +1449,7 @@ class _LogRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = _DashTheme.of(context);
     final time = DateFormat('HH:mm:ss').format(update.timestamp);
     final color = _dotColor();
     final isFault =
@@ -1363,10 +1463,10 @@ class _LogRow extends StatelessWidget {
           // timestamp
           Text(
             time,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
               fontFamily: 'monospace',
-              color: AppColors.textMuted,
+              color: _textMuted(isDark),
             ),
           ),
           const SizedBox(width: 8),
@@ -1392,7 +1492,7 @@ class _LogRow extends StatelessWidget {
               update.message,
               style: TextStyle(
                 fontSize: 11,
-                color: isFault ? AppColors.danger : AppColors.textPrimary,
+                color: isFault ? AppColors.danger : _textPrimary(isDark),
               ),
             ),
           ),
@@ -1413,14 +1513,15 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = _DashTheme.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _kCard,
+        color: _card(isDark),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: glowBorder ? _kCardBorderGreen : _kCardBorder,
+          color: glowBorder ? _cardBorderGreen(isDark) : _cardBorder(isDark),
           width: glowBorder ? 1.2 : 1,
         ),
         boxShadow: glowBorder
@@ -1431,7 +1532,15 @@ class _Card extends StatelessWidget {
                   spreadRadius: 1,
                 ),
               ]
-            : null,
+            : isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: child,
     );
@@ -1487,6 +1596,7 @@ class _ActionBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = _DashTheme.of(context);
     final accent = danger ? AppColors.danger : _kGreen;
     final eff = disabled ? 0.35 : 1.0;
 
@@ -1497,12 +1607,12 @@ class _ActionBtn extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 13),
           decoration: BoxDecoration(
-            color: active
-                ? accent.withValues(alpha: 0.18)
-                : const Color(0xFF0D1F2D),
+            color: active ? accent.withValues(alpha: 0.18) : _btnBase(isDark),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: active ? accent.withValues(alpha: 0.7) : _kCardBorder,
+              color: active
+                  ? accent.withValues(alpha: 0.7)
+                  : _cardBorder(isDark),
               width: active ? 1.5 : 1,
             ),
           ),
@@ -1512,7 +1622,7 @@ class _ActionBtn extends StatelessWidget {
               Icon(
                 icon,
                 size: 16,
-                color: active ? accent : AppColors.textSecondary,
+                color: active ? accent : _textSecondary(isDark),
               ),
               const SizedBox(width: 7),
               Text(
@@ -1520,7 +1630,7 @@ class _ActionBtn extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: active ? accent : AppColors.textSecondary,
+                  color: active ? accent : _textSecondary(isDark),
                 ),
               ),
             ],

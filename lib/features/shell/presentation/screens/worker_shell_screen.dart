@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/providers/theme_provider.dart';
 import '../../../../core/routing/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -45,9 +46,12 @@ class _WorkerShellScreenState extends ConsumerState<WorkerShellScreen>
   Widget build(BuildContext context) {
     final user = ref.watch(authStateProvider).user;
     final status = ref.watch(robotStatusProvider);
+    final isDark = ref.watch(themeModeProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0F1A),
+      backgroundColor: isDark
+          ? const Color(0xFF0A0F1A)
+          : AppColors.lightBackground,
       body: Column(
         children: [
           // ── top bar ───────────────────────────────────────────────────────
@@ -55,12 +59,13 @@ class _WorkerShellScreenState extends ConsumerState<WorkerShellScreen>
             workerName: user?.name ?? 'Worker',
             isConnected: status.isConnected,
             pulseCtrl: _pulseCtrl,
+            isDark: isDark,
           ),
           // ── body ──────────────────────────────────────────────────────────
           Expanded(
             child: Row(
               children: [
-                _Sidebar(workerName: user?.name ?? 'Worker'),
+                _Sidebar(workerName: user?.name ?? 'Worker', isDark: isDark),
                 Expanded(child: widget.child),
               ],
             ),
@@ -80,21 +85,29 @@ class _TopBar extends ConsumerWidget {
     required this.workerName,
     required this.isConnected,
     required this.pulseCtrl,
+    required this.isDark,
   });
   final String workerName;
   final bool isConnected;
   final AnimationController pulseCtrl;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final topBarBg = isDark ? _kTopBarBg : AppColors.lightSurface;
+    final borderColor = isDark ? _kBorderGreen : AppColors.lightCardBorder;
+    final chipBg = isDark ? const Color(0xFF0F1E2E) : AppColors.lightInputFill;
+    final chipBorder = isDark ? _kBorder : AppColors.lightCardBorder;
+    final textColor = isDark
+        ? AppColors.textPrimary
+        : AppColors.lightTextPrimary;
+
     return Container(
       height: 56,
       padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
-        color: _kTopBarBg,
-        border: const Border(
-          bottom: BorderSide(color: _kBorderGreen, width: 1),
-        ),
+        color: topBarBg,
+        border: Border(bottom: BorderSide(color: borderColor, width: 1)),
       ),
       child: Row(
         children: [
@@ -128,7 +141,9 @@ class _TopBar extends ConsumerWidget {
                 TextSpan(
                   text: '  ·  Worker Panel',
                   style: AppTextStyles.titleMedium.copyWith(
-                    color: AppColors.textSecondary,
+                    color: isDark
+                        ? AppColors.textSecondary
+                        : AppColors.lightTextSecondary,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
@@ -188,15 +203,20 @@ class _TopBar extends ConsumerWidget {
             ),
           ),
 
-          const SizedBox(width: 20),
+          const SizedBox(width: 12),
+
+          // ── theme toggle ──────────────────────────────────────────────────
+          _ThemeToggle(isDark: isDark),
+
+          const SizedBox(width: 12),
 
           // user chip
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: const Color(0xFF0F1E2E),
+              color: chipBg,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: _kBorder),
+              border: Border.all(color: chipBorder),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -217,10 +237,10 @@ class _TopBar extends ConsumerWidget {
                 const SizedBox(width: 7),
                 Text(
                   workerName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: textColor,
                   ),
                 ),
               ],
@@ -244,13 +264,15 @@ class _TopBar extends ConsumerWidget {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0F1E2E),
+                  color: chipBg,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: _kBorder),
+                  border: Border.all(color: chipBorder),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.logout_rounded,
-                  color: AppColors.textSecondary,
+                  color: isDark
+                      ? AppColors.textSecondary
+                      : AppColors.lightTextSecondary,
                   size: 16,
                 ),
               ),
@@ -263,12 +285,73 @@ class _TopBar extends ConsumerWidget {
 }
 
 // =============================================================================
+//  Theme Toggle
+// =============================================================================
+
+class _ThemeToggle extends ConsumerWidget {
+  const _ThemeToggle({required this.isDark});
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Tooltip(
+      message: isDark ? 'Switch to light mode' : 'Switch to dark mode',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: () => ref.read(themeModeProvider.notifier).state = !isDark,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.07)
+                  : Colors.black.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.12)
+                    : Colors.black.withValues(alpha: 0.10),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+                  size: 14,
+                  color: isDark
+                      ? AppColors.textSecondary
+                      : AppColors.lightTextSecondary,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  isDark ? 'Dark' : 'Light',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: isDark
+                        ? AppColors.textSecondary
+                        : AppColors.lightTextSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// =============================================================================
 //  Sidebar
 // =============================================================================
 
 class _Sidebar extends ConsumerWidget {
-  const _Sidebar({required this.workerName});
+  const _Sidebar({required this.workerName, required this.isDark});
   final String workerName;
+  final bool isDark;
 
   static const _navItems = [
     _NavDef(
@@ -288,11 +371,19 @@ class _Sidebar extends ConsumerWidget {
     final location = GoRouterState.of(context).uri.toString();
     final status = ref.watch(robotStatusProvider);
 
+    final sidebarBg = isDark ? _kSidebarBg : AppColors.lightSurfaceElevated;
+    final borderCol = isDark ? _kBorderGreen : AppColors.lightCardBorder;
+    final cardBg = isDark ? const Color(0xFF0C1A26) : AppColors.lightInputFill;
+    final textMuted = isDark ? AppColors.textMuted : AppColors.lightTextMuted;
+    final textPrimary = isDark
+        ? AppColors.textPrimary
+        : AppColors.lightTextPrimary;
+
     return Container(
       width: 220,
       decoration: BoxDecoration(
-        color: _kSidebarBg,
-        border: const Border(right: BorderSide(color: _kBorderGreen)),
+        color: sidebarBg,
+        border: Border(right: BorderSide(color: borderCol)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -302,9 +393,9 @@ class _Sidebar extends ConsumerWidget {
             margin: const EdgeInsets.all(12),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFF0C1A26),
+              color: cardBg,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _kBorderGreen),
+              border: Border.all(color: borderCol),
             ),
             child: Row(
               children: [
@@ -397,14 +488,14 @@ class _Sidebar extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 9,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textMuted,
+                color: textMuted,
                 letterSpacing: 1.2,
               ),
             ),
           ),
 
           // ── divider ──────────────────────────────────────────────────────
-          Divider(height: 1, color: _kBorderGreen, indent: 12, endIndent: 12),
+          Divider(height: 1, color: borderCol, indent: 12, endIndent: 12),
           const SizedBox(height: 8),
 
           // ── nav items ────────────────────────────────────────────────────
@@ -418,6 +509,7 @@ class _Sidebar extends ConsumerWidget {
               icon: item.icon,
               label: item.label,
               selected: selected,
+              isDark: isDark,
               onTap: () => context.go(item.route),
             );
           }),
@@ -425,7 +517,7 @@ class _Sidebar extends ConsumerWidget {
           const Spacer(),
 
           // ── worker info at bottom ────────────────────────────────────────
-          Divider(height: 1, color: _kBorderGreen, indent: 12, endIndent: 12),
+          Divider(height: 1, color: borderCol, indent: 12, endIndent: 12),
           Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
@@ -451,18 +543,15 @@ class _Sidebar extends ConsumerWidget {
                     children: [
                       Text(
                         workerName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                          color: textPrimary,
                         ),
                       ),
-                      const Text(
+                      Text(
                         'Worker',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: AppColors.textMuted,
-                        ),
+                        style: TextStyle(fontSize: 10, color: textMuted),
                       ),
                     ],
                   ),
@@ -485,11 +574,13 @@ class _NavTile extends StatefulWidget {
     required this.icon,
     required this.label,
     required this.selected,
+    required this.isDark,
     required this.onTap,
   });
   final IconData icon;
   final String label;
   final bool selected;
+  final bool isDark;
   final VoidCallback onTap;
 
   @override
@@ -502,6 +593,19 @@ class _NavTileState extends State<_NavTile> {
   @override
   Widget build(BuildContext context) {
     final accent = widget.selected || _hovered;
+    final hoverBg = widget.isDark
+        ? const Color(0xFF0C1E2A)
+        : const Color(0xFFEDF2F7);
+    final iconBg = accent
+        ? _kGreen.withValues(alpha: 0.12)
+        : widget.isDark
+        ? const Color(0xFF0D1A24)
+        : const Color(0xFFE8EDF5);
+    final labelColor = accent
+        ? (widget.isDark ? AppColors.textPrimary : AppColors.lightTextPrimary)
+        : (widget.isDark
+              ? AppColors.textSecondary
+              : AppColors.lightTextSecondary);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -516,7 +620,7 @@ class _NavTileState extends State<_NavTile> {
             color: widget.selected
                 ? _kGreen.withValues(alpha: 0.1)
                 : _hovered
-                ? const Color(0xFF0C1E2A)
+                ? hoverBg
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
@@ -532,15 +636,17 @@ class _NavTileState extends State<_NavTile> {
                 width: 30,
                 height: 30,
                 decoration: BoxDecoration(
-                  color: accent
-                      ? _kGreen.withValues(alpha: 0.12)
-                      : const Color(0xFF0D1A24),
+                  color: iconBg,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   widget.icon,
                   size: 16,
-                  color: accent ? _kGreen : AppColors.textSecondary,
+                  color: accent
+                      ? _kGreen
+                      : (widget.isDark
+                            ? AppColors.textSecondary
+                            : AppColors.lightTextSecondary),
                 ),
               ),
               const SizedBox(width: 12),
@@ -551,9 +657,7 @@ class _NavTileState extends State<_NavTile> {
                   fontWeight: widget.selected
                       ? FontWeight.w700
                       : FontWeight.w500,
-                  color: accent
-                      ? AppColors.textPrimary
-                      : AppColors.textSecondary,
+                  color: labelColor,
                 ),
               ),
               if (widget.selected) ...[
