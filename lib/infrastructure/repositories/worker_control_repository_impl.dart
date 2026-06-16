@@ -28,6 +28,20 @@ class WorkerControlRepositoryImpl implements WorkerControlRepository {
   Future<void> clearFaults() => _mockDataSource.clearFaults();
 
   @override
+  Future<void> setMechanismPosition(String position) =>
+      _mockDataSource.setMechanismPosition(position);
+
+  @override
+  Future<void> openGripper() => _mockDataSource.openGripper();
+
+  @override
+  Future<void> closeGripper() => _mockDataSource.closeGripper();
+
+  @override
   Stream<StorageState> watchStorageState() =>
       _mockDataSource.storageStateStream;
+
+  @override
+  Stream<GripperState> watchGripperState() =>
+      _mockDataSource.gripperStateStream;
 }

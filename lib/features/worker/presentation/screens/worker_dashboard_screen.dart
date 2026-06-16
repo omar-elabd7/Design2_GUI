@@ -104,48 +104,55 @@ class _WorkerDashboardScreenState extends ConsumerState<WorkerDashboardScreen>
             ),
 
             // ── content ──────────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ── LEFT ──────────────────────────────────────────────
-                  Expanded(
-                    flex: 55,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _ManualControlCard(pulseCtrl: _pulseCtrl),
-                        const SizedBox(height: 12),
-                        _StorageCard(),
-                        const SizedBox(height: 12),
-                        Expanded(child: const _EventLogCard()),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // ── RIGHT ─────────────────────────────────────────────
-                  Expanded(
-                    flex: 45,
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          _RobotStatusCard(pulseCtrl: _pulseCtrl),
-                          const SizedBox(height: 12),
-                          _BatteryCard(),
-                          const SizedBox(height: 12),
-                          _ActiveFaultsCard(),
-                          const SizedBox(height: 12),
-                          _RobotModeCard(),
-                          const SizedBox(height: 12),
-                          const _RecentActivityCard(),
-                        ],
+            Positioned.fill(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── LEFT ──────────────────────────────────────────────
+                    Expanded(
+                      flex: 55,
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _ManualControlCard(pulseCtrl: _pulseCtrl),
+                            const SizedBox(height: 12),
+                            _StorageCard(),
+                            const SizedBox(height: 12),
+                            _MechanismCard(),
+                            const SizedBox(height: 12),
+                            const SizedBox(height: 220, child: _EventLogCard()),
+                            const SizedBox(height: 12),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    // ── RIGHT ─────────────────────────────────────────────
+                    Expanded(
+                      flex: 45,
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            _RobotStatusCard(pulseCtrl: _pulseCtrl),
+                            const SizedBox(height: 12),
+                            _BatteryCard(),
+                            const SizedBox(height: 12),
+                            _ActiveFaultsCard(),
+                            const SizedBox(height: 12),
+                            _RobotModeCard(),
+                            const SizedBox(height: 12),
+                            const _RecentActivityCard(),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+            ), // Positioned.fill
           ],
         ),
       ),
@@ -671,6 +678,124 @@ class _StorageCard extends ConsumerWidget {
                       : () => ref
                             .read(workerControlProvider.notifier)
                             .closeStorage(),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =============================================================================
+//  Mechanism Card  (store / home positions + gripper)
+// =============================================================================
+
+class _MechanismCard extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = _DashTheme.of(context);
+    final n = ref.read(workerControlProvider.notifier);
+    final gripperAsync = ref.watch(workerGripperStateProvider);
+    final gripperState = gripperAsync.asData?.value ?? GripperState.closed;
+    final isGripperOpen = gripperState == GripperState.open;
+    final isGripperTrans =
+        gripperState == GripperState.opening ||
+        gripperState == GripperState.closing;
+
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── header ──────────────────────────────────────────────────────
+          Row(
+            children: [
+              const Icon(
+                Icons.precision_manufacturing_rounded,
+                color: _kGreen,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Mechanism Control',
+                style: AppTextStyles.headlineSmall.copyWith(
+                  color: _textPrimary(isDark),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // ── mechanism position ──────────────────────────────────────────
+          Text(
+            'POSITION',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.1,
+              color: _textMuted(isDark),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _ActionBtn(
+                  label: 'Store',
+                  icon: Icons.inventory_2_rounded,
+                  active: false,
+                  onPressed: () => n.setMechanismPosition('store'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _ActionBtn(
+                  label: 'Home',
+                  icon: Icons.home_rounded,
+                  active: false,
+                  onPressed: () => n.setMechanismPosition('home'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // ── gripper ─────────────────────────────────────────────────────
+          Text(
+            'GRIPPER',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.1,
+              color: _textMuted(isDark),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _ActionBtn(
+                  label: 'Open Gripper',
+                  icon: Icons.open_in_full_rounded,
+                  active: isGripperOpen,
+                  disabled: isGripperOpen || isGripperTrans,
+                  onPressed: isGripperOpen || isGripperTrans
+                      ? null
+                      : () => n.openGripper(),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _ActionBtn(
+                  label: 'Close Gripper',
+                  icon: Icons.close_fullscreen_rounded,
+                  active: false,
+                  danger: true,
+                  disabled: !isGripperOpen || isGripperTrans,
+                  onPressed: !isGripperOpen || isGripperTrans
+                      ? null
+                      : () => n.closeGripper(),
                 ),
               ),
             ],

@@ -31,12 +31,8 @@ class TeleopNotifier extends StateNotifier<TeleopDirection> {
     final s =
         _held.contains(LogicalKeyboardKey.keyS) ||
         _held.contains(LogicalKeyboardKey.arrowDown);
-    final a =
-        _held.contains(LogicalKeyboardKey.keyA) ||
-        _held.contains(LogicalKeyboardKey.arrowLeft);
-    final d =
-        _held.contains(LogicalKeyboardKey.keyD) ||
-        _held.contains(LogicalKeyboardKey.arrowRight);
+    final a = _held.contains(LogicalKeyboardKey.keyA); // arrow keys → mechanism
+    final d = _held.contains(LogicalKeyboardKey.keyD); // arrow keys → mechanism
     final q = _held.contains(LogicalKeyboardKey.keyQ);
     final e = _held.contains(LogicalKeyboardKey.keyE);
 

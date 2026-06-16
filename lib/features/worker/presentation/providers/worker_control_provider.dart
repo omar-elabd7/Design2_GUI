@@ -40,6 +40,24 @@ class WorkerControlNotifier extends StateNotifier<RobotMode> {
   Future<void> clearFaults() async {
     await _ref.read(workerControlRepositoryProvider).clearFaults();
   }
+
+  // ── Mechanism position (one-shot) ─────────────────────────────────────────
+
+  Future<void> setMechanismPosition(String position) async {
+    await _ref
+        .read(workerControlRepositoryProvider)
+        .setMechanismPosition(position);
+  }
+
+  // ── Gripper ───────────────────────────────────────────────────────────────
+
+  Future<void> openGripper() async {
+    await _ref.read(workerControlRepositoryProvider).openGripper();
+  }
+
+  Future<void> closeGripper() async {
+    await _ref.read(workerControlRepositoryProvider).closeGripper();
+  }
 }
 
 final workerControlProvider =
@@ -50,4 +68,9 @@ final workerControlProvider =
 final workerStorageStateProvider = StreamProvider<StorageState>((ref) {
   final repo = ref.watch(workerControlRepositoryProvider);
   return repo.watchStorageState();
+});
+
+final workerGripperStateProvider = StreamProvider<GripperState>((ref) {
+  final repo = ref.watch(workerControlRepositoryProvider);
+  return repo.watchGripperState();
 });

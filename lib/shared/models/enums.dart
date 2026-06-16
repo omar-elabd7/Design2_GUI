@@ -18,6 +18,8 @@ enum RobotMode { online, offline, autonomous, manual, emergencyStop }
 
 enum StorageState { open, closed, opening, closing, fault }
 
+enum GripperState { open, closed, opening, closing }
+
 enum MissionState {
   idle,
   missionReceived,

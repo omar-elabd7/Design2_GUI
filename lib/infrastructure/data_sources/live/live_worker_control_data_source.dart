@@ -23,11 +23,12 @@ class LiveWorkerControlDataSource {
   // ── Storage ─────────────────────────────────────────────────────────────────
 
   Future<void> openStorage() async {
-    await _httpPost(kStorageOpenEndpoint);
+    // Send '{}' body — pi_server's request.json() fails on empty body.
+    await _httpPost(kStorageOpenEndpoint, body: {});
   }
 
   Future<void> closeStorage() async {
-    await _httpPost(kStorageCloseEndpoint);
+    await _httpPost(kStorageCloseEndpoint, body: {});
   }
 
   // ── Robot mode ───────────────────────────────────────────────────────────────
@@ -40,6 +41,32 @@ class LiveWorkerControlDataSource {
 
   Future<void> clearFaults() async {
     _ws.send({'type': 'worker.clear_faults'});
+  }
+
+  // ── Mechanism position (one-shot) ────────────────────────────────────────
+
+  Future<void> setMechanismPosition(String position) async {
+    _ws.send({'type': kWsMechanismPosition, 'position': position});
+  }
+
+  // ── Gripper ───────────────────────────────────────────────────────────────
+
+  Future<void> openGripper() async {
+    _ws.send({'type': kWsGripperCommand, 'action': 'open'});
+  }
+
+  Future<void> closeGripper() async {
+    _ws.send({'type': kWsGripperCommand, 'action': 'close'});
+  }
+
+  Stream<GripperState> watchGripperState() {
+    return _ws.messages.where((m) => m['type'] == kWsGripperState).map((m) {
+      final raw = m['state'] as String? ?? 'closed';
+      return GripperState.values.firstWhere(
+        (s) => s.name == raw,
+        orElse: () => GripperState.closed,
+      );
+    });
   }
 
   // ── Storage state stream (via WS) ────────────────────────────────────────────

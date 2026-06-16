@@ -26,6 +26,9 @@ const String kWsTelemetryPose = 'telemetry.pose';
 const String kWsRobotRfidResult = 'robot.rfid_result';
 const String kWsRobotStorageState = 'robot.storage_state';
 const String kWsTeleopCommand = 'teleop.command';
+const String kWsMechanismPosition = 'mechanism.position';
+const String kWsGripperCommand = 'gripper.command';
+const String kWsGripperState = 'gripper.state';
 
 const Duration kHttpTimeout = Duration(seconds: 10);
 const Duration kWebSocketReconnectDelay = Duration(seconds: 3);

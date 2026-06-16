@@ -27,5 +27,18 @@ class LiveWorkerControlRepositoryImpl implements WorkerControlRepository {
   Future<void> clearFaults() => _src.clearFaults();
 
   @override
+  Future<void> setMechanismPosition(String position) =>
+      _src.setMechanismPosition(position);
+
+  @override
+  Future<void> openGripper() => _src.openGripper();
+
+  @override
+  Future<void> closeGripper() => _src.closeGripper();
+
+  @override
   Stream<StorageState> watchStorageState() => _src.watchStorageState();
+
+  @override
+  Stream<GripperState> watchGripperState() => _src.watchGripperState();
 }
